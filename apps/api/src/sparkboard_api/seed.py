@@ -96,7 +96,7 @@ def _device(name: str) -> str:
 
 async def seed(settings: Settings) -> int:
     db = Database(settings)
-    rng = random.Random(7)  # noqa: S311 - deterministic demo data, not security
+    rng = random.Random(7)  # noqa: S311  # nosec B311
     async for session in db.session():
         if (await session.execute(select(func.count(Idea.id)))).scalar_one():
             await db.dispose()

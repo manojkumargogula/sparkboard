@@ -38,3 +38,18 @@ export function seedHue(seed: string): number {
   for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return h;
 }
+
+/**
+ * Heat score, 0–100 with one decimal: momentum from votes and discussion,
+ * normalised against the hottest idea on the board. Shown like a rating.
+ */
+export function heatScore(votes: number, comments: number, maxEngagement: number): number {
+  const engagement = votes + comments * 0.5;
+  const ceiling = Math.max(maxEngagement, 4);
+  const score = 35 + 65 * (Math.log1p(engagement) / Math.log1p(ceiling));
+  return Math.round(Math.min(99.9, score) * 10) / 10;
+}
+
+export function engagementOf(idea: { vote_count: number; comment_count: number }): number {
+  return idea.vote_count + idea.comment_count * 0.5;
+}

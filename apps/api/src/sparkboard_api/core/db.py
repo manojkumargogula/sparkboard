@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
 
 from sparkboard_api.core.config import Settings
 
@@ -26,8 +25,16 @@ def build_engine(settings: Settings) -> AsyncEngine:
         connect_args["ssl"] = "require"
 
     if settings.db_serverless:
+        # Serverless instances are reused between requests (Vercel fluid compute),
+        # so keep a tiny pool behind the provider's transaction pooler. Short
+        # recycle + pre-ping drop connections that went stale while frozen.
         return create_async_engine(
-            settings.async_database_url, poolclass=NullPool, connect_args=connect_args
+            settings.async_database_url,
+            pool_size=1,
+            max_overflow=4,
+            pool_recycle=120,
+            pool_pre_ping=True,
+            connect_args=connect_args,
         )
     return create_async_engine(
         settings.async_database_url,

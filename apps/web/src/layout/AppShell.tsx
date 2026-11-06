@@ -1,46 +1,37 @@
 import { clsx } from "clsx";
-import { Search, UserRound } from "lucide-react";
-import { motion } from "motion/react";
+import { Menu, Search, UserRound, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
-import { useProfile } from "@/features/profile/useProfile";
+import { useComposer } from "@/features/composer/useComposer";
 import { CommandPalette } from "@/features/palette/CommandPalette";
+import { useProfile } from "@/features/profile/useProfile";
 import { useHotkeys } from "@/lib/useHotkeys";
 import { Avatar } from "@/ui/Avatar";
-import { Kbd } from "@/ui/Kbd";
-import { ThemeToggle } from "@/ui/ThemeToggle";
+import { Button } from "@/ui/Button";
+import { Wordmark } from "@/ui/Wordmark";
 
-function Wordmark() {
-  return (
-    <span className="inline-flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight">
-      <motion.svg
-        width="26"
-        height="26"
-        viewBox="0 0 88 88"
-        aria-hidden
-        whileHover={{ rotate: 90, scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 12 }}
-      >
-        <path d="M44 6 52 34 80 44 52 54 44 82 36 54 8 44 36 34Z" fill="var(--color-ember)" />
-      </motion.svg>
-      sparkboard
-    </span>
-  );
-}
+import { Footer } from "./Footer";
 
-const NAV = [
-  { to: "/", label: "Board" },
+const LINKS = [
+  { to: "/#top-10", label: "Top 10" },
+  { to: "/#all-ideas", label: "All ideas" },
   { to: "/roadmap", label: "Roadmap" },
+  { to: "/#mission", label: "Mission" },
 ];
 
 export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { profile, editProfile } = useProfile();
+  const { openComposer } = useComposer();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
 
-  useHotkeys({ "/": () => setPaletteOpen(true) });
+  useHotkeys({ "/": () => setPaletteOpen(true), n: openComposer });
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -48,123 +39,138 @@ export function AppShell() {
         setPaletteOpen((o) => !o);
       }
     }
+    const onScroll = () => setScrolled(window.scrollY > 24);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
-  const section = pathname.startsWith("/roadmap") ? "/roadmap" : "/";
+  // Hash links ("/#top-10") scroll to their section after navigation.
+  useEffect(() => {
+    if (!hash) return;
+    const id = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView(), 60);
+    return () => clearTimeout(id);
+  }, [pathname, hash]);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[90rem] flex-col px-4 sm:px-8">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3">
+    <div className="flex min-h-dvh flex-col">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50"
+      >
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 -mx-4 flex h-[4.5rem] items-center gap-2 bg-canvas/85 px-4 backdrop-blur-md sm:-mx-8 sm:gap-4 sm:px-8">
-        <NavLink to="/" aria-label="Sparkboard home" className="rounded-xl">
-          <Wordmark />
-        </NavLink>
-        <nav
-          aria-label="Main"
-          className="ml-2 hidden rounded-full bg-surface p-1 ring-1 ring-line sm:flex"
-        >
-          {NAV.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              className={clsx(
-                "relative rounded-full px-4 py-2 text-base font-semibold transition-colors",
-                section === n.to ? "text-canvas" : "text-muted hover:text-ink",
-              )}
+      <header
+        className={clsx(
+          "fixed inset-x-0 top-0 z-30 transition-colors duration-300",
+          scrolled || menuOpen
+            ? "border-b border-white/10 bg-night/90 backdrop-blur-md"
+            : "bg-transparent",
+        )}
+      >
+        <div className="container-x flex h-16 items-center gap-6">
+          <Link to="/" aria-label="Sparkboard home" className="rounded-md">
+            <Wordmark />
+          </Link>
+          <nav aria-label="Main" className="ml-auto hidden items-center gap-8 lg:flex">
+            {LINKS.map((l) => (
+              <NavLink
+                key={l.label}
+                to={l.to}
+                className={() =>
+                  clsx(
+                    "text-[14px] font-semibold tracking-[0.04em] uppercase transition-colors hover:text-cobalt-soft",
+                    pathname === l.to ? "text-cobalt-soft" : "text-snow",
+                  )
+                }
+              >
+                {l.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-1.5 lg:ml-6">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              aria-label="Search and commands"
+              className="grid size-10 place-items-center rounded-full text-snow transition-colors hover:bg-white/10"
             >
-              {section === n.to && (
-                <motion.span
-                  layoutId="nav-active"
-                  className="absolute inset-0 rounded-full bg-ink"
-                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                />
-              )}
-              <span className="relative">{n.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="flex h-11 items-center gap-3 rounded-full bg-surface px-3 text-muted ring-1 ring-line transition-colors hover:text-ink sm:px-4"
-            aria-label="Search and commands"
-          >
-            <Search size={18} />
-            <span className="hidden text-base md:inline">Search ideas</span>
-            <span className="hidden md:inline-flex">
-              <Kbd>⌘K</Kbd>
-            </span>
-          </button>
-          <ThemeToggle />
-          <button
-            type="button"
-            onClick={editProfile}
-            aria-label={
-              profile ? `Signed in as ${profile.display_name}. Change name` : "Choose a name"
-            }
-            className="rounded-full"
-          >
-            {profile ? (
-              <Avatar author={profile} />
-            ) : (
-              <span className="grid size-11 place-items-center rounded-full text-ink transition-colors hover:bg-iris-soft">
-                <UserRound size={20} />
-              </span>
-            )}
-          </button>
+              <Search size={19} />
+            </button>
+            <button
+              type="button"
+              onClick={editProfile}
+              aria-label={
+                profile ? `Signed in as ${profile.display_name}. Change name` : "Choose a name"
+              }
+              className="grid size-10 place-items-center rounded-full text-snow transition-colors hover:bg-white/10"
+            >
+              {profile ? <Avatar author={profile} size="sm" /> : <UserRound size={19} />}
+            </button>
+            <Button size="sm" className="ml-2 hidden sm:inline-flex" onClick={openComposer}>
+              Post an idea
+            </Button>
+            <button
+              type="button"
+              className="grid size-10 place-items-center rounded-full text-snow hover:bg-white/10 lg:hidden"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.nav
+              aria-label="Mobile"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-white/10 lg:hidden"
+            >
+              <div className="container-x flex flex-col py-4">
+                {LINKS.map((l) => (
+                  <Link
+                    key={l.label}
+                    to={l.to}
+                    onClick={() => setMenuOpen(false)}
+                    className="border-b border-white/10 py-4 text-3xl font-bold tracking-tight uppercase"
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+                <Button
+                  size="lg"
+                  className="mt-6 justify-center"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openComposer();
+                  }}
+                >
+                  Post an idea
+                </Button>
+              </div>
+            </motion.nav>
+          )}
+        </AnimatePresence>
       </header>
 
       <main id="main" className="flex-1">
         <Outlet />
       </main>
 
-      <nav
-        aria-label="Sections"
-        className="fixed inset-x-4 bottom-4 z-30 flex rounded-full bg-ink/90 p-1.5 shadow-2xl backdrop-blur sm:hidden"
-      >
-        {NAV.map((n) => (
-          <NavLink
-            key={n.to}
-            to={n.to}
-            className={clsx(
-              "flex-1 rounded-full py-3 text-center text-base font-semibold",
-              section === n.to ? "bg-canvas text-ink" : "text-canvas/80",
-            )}
-          >
-            {n.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line py-8 pb-28 text-sm text-muted sm:pb-8">
-        <span>
-          Sparkboard by{" "}
-          <a
-            href="https://infrenic.com"
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
-            Infrenic
-          </a>
-        </span>
-        <span className="hidden items-center gap-2 sm:inline-flex">
-          <Kbd>N</Kbd> new idea <Kbd>/</Kbd> search <Kbd>J</Kbd>
-          <Kbd>K</Kbd> move
-        </span>
-      </footer>
+      <Footer />
 
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
-        onNewIdea={() => {
-          void navigate("/");
-          setTimeout(() => document.getElementById("idea-content")?.focus(), 80);
-        }}
+        onNewIdea={openComposer}
+        onNavigate={(to) => void navigate(to)}
       />
     </div>
   );

@@ -1,22 +1,24 @@
 import { Link } from "react-router";
 
-import { EmptyState } from "@/ui/EmptyState";
+import { buttonClass } from "@/ui/buttonClass";
 
 export function NotFound() {
   return (
-    <div className="py-16">
-      <EmptyState
-        title="This page drifted off"
-        body="The link may be old or mistyped. The board is still where you left it."
-        action={
-          <Link
-            to="/"
-            className="inline-flex h-11 items-center rounded-full bg-ink px-5 font-semibold text-canvas"
-          >
-            Back to the board
-          </Link>
-        }
-      />
-    </div>
+    <section className="grid-night flex min-h-[80dvh] items-center pt-24">
+      <div className="container-x">
+        <p className="label text-fog">Error 404</p>
+        <h1 className="mt-4 text-mega uppercase">
+          Lost
+          <br />
+          <span className="text-cobalt">the thread.</span>
+        </h1>
+        <p className="mt-6 max-w-md text-xl text-fog">
+          This link is old or mistyped. The board is right where you left it.
+        </p>
+        <Link to="/" className={buttonClass("cobalt", "lg", "mt-8")}>
+          Back to the board
+        </Link>
+      </div>
+    </section>
   );
 }

@@ -21,9 +21,8 @@ def _run(connection: Connection) -> None:
 
 
 async def _run_async() -> None:
-    # Migrations use a direct connection, never the pooled/serverless one.
-    settings = Settings(db_serverless=True)
-    engine = build_engine(settings)
+    # Run with DATABASE_URL pointing at a direct (non-pooled) connection.
+    engine = build_engine(Settings())
     async with engine.connect() as connection:
         await connection.run_sync(_run)
     await engine.dispose()

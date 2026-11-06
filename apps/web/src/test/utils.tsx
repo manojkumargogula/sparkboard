@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { createMemoryRouter, RouterProvider } from "react-router";
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
+
+import { ComposerProvider } from "@/features/composer/ComposerProvider";
 
 import { ProfileProvider } from "@/features/profile/ProfileProvider";
 import type { Idea } from "@/lib/types";
@@ -31,7 +33,19 @@ interface Route {
 /** Render inside the same providers the app uses, with a fresh cache per test. */
 export function renderApp(routes: Route[], initialPath = "/") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const router = createMemoryRouter(routes, { initialEntries: [initialPath] });
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <ComposerProvider>
+            <Outlet />
+          </ComposerProvider>
+        ),
+        children: routes,
+      },
+    ],
+    { initialEntries: [initialPath] },
+  );
   return {
     client,
     ...render(

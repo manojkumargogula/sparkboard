@@ -11,26 +11,19 @@ interface Props {
   children: ReactNode;
   /** "center" for dialogs, "side" for the idea sheet (bottom sheet on phones). */
   placement?: "center" | "side";
+  width?: string;
 }
 
-const PANEL = {
+const MOTION = {
   center: {
-    className:
-      "fixed top-1/2 left-1/2 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 p-7",
-    motion: {
-      initial: { opacity: 0, scale: 0.94, y: 12 },
-      animate: { opacity: 1, scale: 1, y: 0 },
-      exit: { opacity: 0, scale: 0.96, y: 8 },
-    },
+    initial: { opacity: 0, scale: 0.96, y: 16 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.97, y: 8 },
   },
   side: {
-    className:
-      "fixed z-50 inset-x-0 bottom-0 max-h-[92dvh] rounded-b-none sm:inset-y-3 sm:right-3 sm:left-auto sm:max-h-none sm:w-[min(40rem,calc(100vw-1.5rem))] sm:rounded-b-[var(--radius-card)] flex flex-col",
-    motion: {
-      initial: { opacity: 0, y: 60 },
-      animate: { opacity: 1, y: 0 },
-      exit: { opacity: 0, y: 60 },
-    },
+    initial: { opacity: 0, x: 48 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: 48 },
   },
 } as const;
 
@@ -41,8 +34,12 @@ export function Modal({
   description,
   children,
   placement = "center",
+  width = "36rem",
 }: Props) {
-  const panel = PANEL[placement];
+  const panel =
+    placement === "center"
+      ? "fixed top-[8vh] left-1/2 max-h-[84dvh] -translate-x-1/2 overflow-y-auto rounded-[10px] p-7 sm:p-9"
+      : "fixed inset-x-0 bottom-0 flex max-h-[94dvh] flex-col rounded-t-[14px] sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:rounded-none";
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
@@ -50,7 +47,7 @@ export function Modal({
           <Dialog.Portal forceMount>
             <Dialog.Overlay asChild forceMount>
               <motion.div
-                className="fixed inset-0 z-40 bg-[#0b0920]/45 backdrop-blur-[6px]"
+                className="fixed inset-0 z-40 bg-black/70 backdrop-blur-[3px]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -60,28 +57,27 @@ export function Modal({
               asChild
               forceMount
               onOpenAutoFocus={(e) => {
-                // Focus the panel itself, so screen readers start at the top
-                // and no control shows a focus ring the user didn't ask for.
+                // Focus the panel itself: screen readers start at the top and no
+                // control shows a focus ring the user didn't ask for.
                 e.preventDefault();
                 (e.currentTarget as HTMLElement).focus();
               }}
             >
               <motion.div
                 tabIndex={-1}
-                className={`card outline-none ${panel.className}`}
-                {...panel.motion}
-                transition={{ type: "spring", stiffness: 360, damping: 32 }}
+                className={`z-50 bg-paper-2 text-night shadow-2xl outline-none ${panel}`}
+                style={{
+                  width: `min(${width}, ${placement === "center" ? "calc(100vw - 2rem)" : "100vw"})`,
+                }}
+                {...MOTION[placement]}
+                transition={{ type: "spring", stiffness: 380, damping: 36 }}
               >
                 <Dialog.Title className="sr-only">{title}</Dialog.Title>
-                {description ? (
-                  <Dialog.Description className="sr-only">{description}</Dialog.Description>
-                ) : (
-                  <Dialog.Description className="sr-only">{title}</Dialog.Description>
-                )}
+                <Dialog.Description className="sr-only">{description ?? title}</Dialog.Description>
                 {children}
                 <Dialog.Close
                   aria-label="Close"
-                  className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full text-muted transition-colors hover:bg-iris-soft hover:text-ink"
+                  className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full text-night/60 transition-colors hover:bg-night/8 hover:text-night"
                 >
                   <X size={20} />
                 </Dialog.Close>

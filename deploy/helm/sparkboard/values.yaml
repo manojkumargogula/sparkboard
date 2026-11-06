@@ -1,0 +1,59 @@
+# Defaults are production-shaped and cloud-neutral. Override per cloud/env only.
+
+image:
+  registry: ghcr.io/manojkumargogula
+  tag: ""            # defaults to .Chart.AppVersion; CI sets the git SHA
+  pullPolicy: IfNotPresent
+
+api:
+  replicas: 2
+  port: 8000
+  resources:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits: { memory: 384Mi }
+  autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 10, targetCPU: 70 }
+  env:
+    ENVIRONMENT: production
+    LOG_JSON: "true"
+    AI_PROVIDER: none
+    AI_MODEL: claude-opus-5-5
+
+web:
+  replicas: 2
+  port: 8080
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { memory: 96Mi }
+  autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 6, targetCPU: 75 }
+
+# Secrets: either let the chart create one from these values (dev/kind), or
+# point at a Secret managed outside Helm (Terraform / External Secrets) in prod.
+secrets:
+  existingSecret: ""     # name of a Secret holding DATABASE_URL, ADMIN_TOKEN, AI_API_KEY
+  databaseUrl: ""
+  adminToken: ""
+  aiApiKey: ""
+
+migrations:
+  enabled: true          # Helm pre-upgrade hook: alembic upgrade head
+  backoffLimit: 2
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ""               # empty = match any host (useful on kind / raw LB IP)
+  annotations: {}
+  tls: { enabled: false, secretName: sparkboard-tls }
+
+podDisruptionBudget:
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+
+serviceAccount:
+  create: true
+  annotations: {}        # e.g. IRSA role ARN / GKE Workload Identity / Azure WI client id
+
+nodeSelector: {}
+tolerations: []

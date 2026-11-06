@@ -1,0 +1,16 @@
+# Local kind cluster: chart-managed secret, in-cluster Postgres, single replicas.
+image:
+  registry: ""
+  tag: local
+  pullPolicy: Never
+api:
+  replicas: 1
+  autoscaling: { enabled: false }
+web:
+  replicas: 1
+  autoscaling: { enabled: false }
+podDisruptionBudget:
+  minAvailable: 0
+secrets:
+  databaseUrl: postgresql://sparkboard:sparkboard@postgres:5432/sparkboard
+  adminToken: kind-admin

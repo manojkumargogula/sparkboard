@@ -1,0 +1,10 @@
+# GKE Autopilot: GCE ingress + Artifact Registry + Workload Identity.
+image:
+  registry: ""           # set by Terraform output `registry_url`
+ingress:
+  className: gce
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: ""   # optional reserved IP
+api:
+  resources:             # Autopilot bills on requests; keep them honest.
+    requests: { cpu: 250m, memory: 256Mi }

@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/*
+ * Sparkboard design tokens.
+ * Canvas is a cool periwinkle "night sky" in dark mode and a misty paper-blue in light.
+ * The single loud colour is EMBER: it marks heat (votes) and nothing else.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Martian Mono", ui-monospace, monospace;
+
+  --color-canvas: var(--sb-canvas);
+  --color-surface: var(--sb-surface);
+  --color-raised: var(--sb-raised);
+  --color-ink: var(--sb-ink);
+  --color-muted: var(--sb-muted);
+  --color-line: var(--sb-line);
+  --color-iris: var(--sb-iris);
+  --color-iris-soft: var(--sb-iris-soft);
+  --color-ember: #ff5a36;
+  --color-amber: #ffb224;
+  --color-flare: #e5266e;
+  --color-mint: #13a37f;
+
+  /* Fluid type: big by default, this is a consumer product. */
+  --text-hero: clamp(2.75rem, 1.6rem + 5.2vw, 5.75rem);
+  --text-hero--line-height: 0.95;
+  --text-title: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
+  --text-title--line-height: 1.08;
+  --text-idea: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+  --text-idea--line-height: 1.32;
+
+  --radius-card: 1.75rem;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-rise: rise 600ms var(--ease-out-expo) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+:root {
+  --sb-canvas: #eef0ff;
+  --sb-surface: #ffffff;
+  --sb-raised: #f6f7ff;
+  --sb-ink: #16133a;
+  --sb-muted: #5e5a85;
+  --sb-line: #d9dcf5;
+  --sb-iris: #4b3fd8;
+  --sb-iris-soft: #e2e0ff;
+  --sb-shadow: 0 1px 0 rgb(22 19 58 / 0.04), 0 12px 32px -12px rgb(46 38 140 / 0.22);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sb-canvas: #100e2a;
+    --sb-surface: #1b1840;
+    --sb-raised: #242054;
+    --sb-ink: #efedff;
+    --sb-muted: #a6a1d6;
+    --sb-line: #322d6b;
+    --sb-iris: #9d94ff;
+    --sb-iris-soft: #2b2666;
+    --sb-shadow: 0 1px 0 rgb(255 255 255 / 0.04), 0 18px 40px -16px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --sb-canvas: #100e2a;
+  --sb-surface: #1b1840;
+  --sb-raised: #242054;
+  --sb-ink: #efedff;
+  --sb-muted: #a6a1d6;
+  --sb-line: #322d6b;
+  --sb-iris: #9d94ff;
+  --sb-iris-soft: #2b2666;
+  --sb-shadow: 0 1px 0 rgb(255 255 255 / 0.04), 0 18px 40px -16px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: clip;
+  }
+  body {
+    @apply bg-canvas font-sans text-lg text-ink;
+    min-height: 100dvh;
+    transition: background-color 400ms ease;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-ember) 30%, transparent);
+  }
+  :focus-visible {
+    outline: 3px solid var(--sb-iris);
+    outline-offset: 3px;
+    border-radius: 0.75rem;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    font-variation-settings: "wdth" 88;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--sb-shadow);
+  }
+  /*
+   * Heat: --heat runs 0..1 from an idea's share of votes. Hot ideas get a warm
+   * ember halo and border; cold ones stay calm. This is the board's signature.
+   */
+  .heat {
+    --heat: 0;
+    border-color: color-mix(in oklab, var(--color-ember) calc(var(--heat) * 55%), var(--sb-line));
+    box-shadow:
+      var(--sb-shadow),
+      0 22px 60px -22px rgb(255 90 54 / calc(var(--heat) * 0.75)),
+      0 0 0 calc(var(--heat) * 3px) rgb(255 178 36 / calc(var(--heat) * 0.18));
+    transition:
+      box-shadow 700ms var(--ease-out-expo),
+      border-color 700ms var(--ease-out-expo);
+  }
+  .heat-meter {
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-amber), var(--color-ember), var(--color-flare));
+    transform-origin: left;
+  }
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--sb-raised) 0%,
+      var(--sb-line) 40%,
+      var(--sb-raised) 80%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-xl;
+  }
+  .grain {
+    background-image: radial-gradient(rgb(75 63 216 / 0.07) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-out-expo);
+}

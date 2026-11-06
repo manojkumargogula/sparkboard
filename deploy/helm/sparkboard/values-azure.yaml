@@ -1,0 +1,5 @@
+# AKS: application routing (managed nginx) + ACR + Azure Workload Identity.
+image:
+  registry: ""           # set by Terraform output `registry_url`
+ingress:
+  className: webapprouting.kubernetes.azure.com

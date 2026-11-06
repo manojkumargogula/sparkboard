@@ -1,0 +1,17 @@
+{{- if .Values.networkPolicy.enabled }}
+# Only the web tier (and the ingress controller) may reach the API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sb.name" . }}-api
+  labels: {{- include "sb.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "sb.selector" (dict "root" . "component" "api") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {{- include "sb.selector" (dict "root" . "component" "web") | nindent 14 }}
+      ports: [{ port: {{ .Values.api.port }} }]
+{{- end }}

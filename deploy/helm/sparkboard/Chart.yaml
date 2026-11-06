@@ -1,0 +1,10 @@
+apiVersion: v2
+name: sparkboard
+description: Sparkboard idea board (web + API). Cloud-neutral; cloud specifics live in values-<cloud>.yaml.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/manojkumargogula/sparkboard
+maintainers:
+  - name: Infrenic
+    url: https://infrenic.com

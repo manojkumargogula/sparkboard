@@ -1,0 +1,8 @@
+version: 2
+updates:
+  - { package-ecosystem: npm, directory: /apps/web, schedule: { interval: weekly }, groups: { web: { patterns: ["*"] } } }
+  - { package-ecosystem: uv, directory: /apps/api, schedule: { interval: weekly }, groups: { api: { patterns: ["*"] } } }
+  - { package-ecosystem: uv, directory: /tools/aiops, schedule: { interval: weekly } }
+  - { package-ecosystem: docker, directory: /docker, schedule: { interval: weekly } }
+  - { package-ecosystem: terraform, directory: /infra/terraform/live/aws, schedule: { interval: monthly } }
+  - { package-ecosystem: github-actions, directory: /, schedule: { interval: weekly } }

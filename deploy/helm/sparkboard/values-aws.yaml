@@ -1,0 +1,9 @@
+# EKS: AWS Load Balancer Controller ingress + ECR images + IRSA.
+image:
+  registry: ""           # set by Terraform output `registry_url`
+ingress:
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /nginx-health

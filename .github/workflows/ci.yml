@@ -64,7 +64,7 @@ jobs:
       - name: Security (bandit)
         run: uv run bandit -q -c pyproject.toml -r src
       - name: Dependency audit (pip-audit)
-        run: uv export --frozen --no-dev --no-hashes --format requirements-txt | uv run pip-audit --strict -r /dev/stdin
+        run: uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt | uv run pip-audit --strict -r /dev/stdin
       - name: Tests (pytest, coverage ≥ 85%)
         run: uv run pytest
       - name: Vercel requirements.txt is in sync with uv.lock

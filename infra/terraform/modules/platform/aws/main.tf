@@ -40,6 +40,7 @@ module "eks" {
   cluster_name                             = var.name
   cluster_version                          = "1.33"
   cluster_endpoint_public_access           = true
+  cluster_endpoint_public_access_cidrs     = var.api_allowed_cidrs
   enable_cluster_creator_admin_permissions = true
   enable_irsa                              = true
   vpc_id                                   = module.vpc.vpc_id

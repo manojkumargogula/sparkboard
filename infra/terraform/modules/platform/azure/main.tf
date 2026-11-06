@@ -103,6 +103,10 @@ resource "azurerm_kubernetes_cluster" "this" {
   web_app_routing {
     dns_zone_ids = []
   }
+
+  api_server_access_profile {
+    authorized_ip_ranges = var.api_allowed_cidrs
+  }
 }
 
 resource "random_password" "db" {

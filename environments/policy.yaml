@@ -1,0 +1,6 @@
+# Guardrails for AI-generated environment configs (tools/aiops envgen).
+# The model may propose anything; these limits always win.
+allowed_sizes: [small, medium, ha]
+max_api_replicas: 20
+max_web_replicas: 10
+min_replicas_critical: 2

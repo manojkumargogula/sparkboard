@@ -1,0 +1,81 @@
+[project]
+name = "sparkboard-api"
+version = "1.0.0"
+description = "Sparkboard REST API: ideas, votes, comments and AI-assisted writing."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32,<1",
+  "sqlalchemy[asyncio]>=2.0.36,<2.1",
+  "asyncpg>=0.30,<1",
+  "alembic>=1.14,<2",
+  "pydantic>=2.9,<3",
+  "pydantic-settings>=2.6,<3",
+  "structlog>=24.4,<26",
+  "prometheus-client>=0.21,<1",
+  "httpx>=0.28,<1",
+  "anthropic>=0.70",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<1",
+  "pytest-cov>=6,<7",
+  "ruff>=0.8,<1",
+  "mypy>=1.13,<2",
+  "bandit[toml]>=1.8,<2",
+  "pip-audit>=2.7,<3",
+  "respx>=0.21,<1",
+]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sparkboard_api"]
+
+# ---------------------------------------------------------------- quality gates
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "ARG",
+  "PTH", "PL", "RUF", "S", "ASYNC", "FAST", "TRY", "PERF", "T20",
+]
+ignore = ["PLR0913", "TRY003", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004", "ARG001"]
+"alembic/**" = ["N999"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+plugins = ["pydantic.mypy"]
+packages = ["sparkboard_api"]
+
+[[tool.mypy.overrides]]
+module = ["asyncpg.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+addopts = "-q --strict-markers --cov=sparkboard_api --cov-report=term-missing --cov-report=xml --cov-fail-under=85"
+
+[tool.coverage.run]
+branch = true
+concurrency = ["greenlet", "thread"]
+source = ["sparkboard_api"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "alembic"]

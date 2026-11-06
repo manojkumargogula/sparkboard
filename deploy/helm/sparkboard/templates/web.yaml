@@ -1,0 +1,56 @@
+{{- $c := dict "root" . "component" "web" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sb.name" . }}-web
+  labels: {{- include "sb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  {{- if not .Values.web.autoscaling.enabled }}
+  replicas: {{ .Values.web.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels: {{- include "sb.selector" $c | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "sb.selector" $c | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "sb.name" . }}
+      securityContext: { runAsUser: 101, runAsGroup: 101 }
+      containers:
+        - name: web
+          image: {{ include "sb.image" $c }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports: [{ name: http, containerPort: {{ .Values.web.port }} }]
+          env:
+            - name: API_UPSTREAM
+              value: http://{{ include "sb.name" . }}-api:8000
+          readinessProbe:
+            httpGet: { path: /nginx-health, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /nginx-health, port: http }
+            periodSeconds: 10
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}
+          {{- include "sb.containerSecurity" . | nindent 10 }}
+          volumeMounts:
+            - { name: cache, mountPath: /var/cache/nginx }
+            - { name: run, mountPath: /tmp }
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+      volumes:
+        - { name: cache, emptyDir: {} }
+        - { name: run, emptyDir: {} }
+        - { name: conf, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sb.name" . }}-web
+  labels: {{- include "sb.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "sb.selector" $c | nindent 4 }}
+  ports: [{ name: http, port: 80, targetPort: http }]

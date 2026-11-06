@@ -1,0 +1,78 @@
+name: ChatOps
+
+# Comment on a PR:  /deploy preview  ·  /deploy staging on gcp  ·  /deploy production
+#                   /rollback production  ·  /plan <anything in plain English>
+# Claude turns the comment into a typed plan of allow-listed steps; policy
+# corrects it; production waits for a reviewer on the `production` environment.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  deployments: write
+
+jobs:
+  plan:
+    if: >-
+      github.event.issue.pull_request &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      (startsWith(github.event.comment.body, '/deploy') ||
+       startsWith(github.event.comment.body, '/rollback') ||
+       startsWith(github.event.comment.body, '/plan'))
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.plan.outputs.environment }}
+      target: ${{ steps.plan.outputs.target }}
+      actions: ${{ steps.plan.outputs.actions }}
+      ref: ${{ steps.pr.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Acknowledge
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh api "repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" -f content=eyes >/dev/null
+      - name: Resolve PR head
+        id: pr
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          echo "sha=$(gh pr view ${{ github.event.issue.number }} --json headRefOid -q .headRefOid)" >> "$GITHUB_OUTPUT"
+          gh pr view ${{ github.event.issue.number }} --json files,headRefName \
+            -q '"branch: \(.headRefName)\nfiles:\n" + ([.files[].path] | join("\n"))' > context.txt
+      - uses: astral-sh/setup-uv@v6
+      - name: Plan
+        id: plan
+        working-directory: tools/aiops
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          COMMAND: ${{ github.event.comment.body }}
+        run: uv run --frozen aiops plan --command "$COMMAND" --context ../../context.txt
+      - name: Post plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BODY: ${{ steps.plan.outputs.comment }}
+        run: gh pr comment ${{ github.event.issue.number }} --body "$BODY"
+
+  vercel:
+    needs: plan
+    if: needs.plan.outputs.target == 'vercel' && !startsWith(github.event.comment.body, '/plan')
+    uses: ./.github/workflows/deploy-vercel.yml
+    with:
+      environment: ${{ needs.plan.outputs.environment }}
+      ref: ${{ needs.plan.outputs.ref }}
+      rollback: ${{ contains(needs.plan.outputs.actions, 'rollback') }}
+      pr: ${{ github.event.issue.number }}
+    secrets: inherit
+
+  kubernetes:
+    needs: plan
+    if: startsWith(needs.plan.outputs.target, 'k8s-') && !startsWith(github.event.comment.body, '/plan')
+    uses: ./.github/workflows/deploy-k8s.yml
+    with:
+      cloud: ${{ needs.plan.outputs.target }}
+      environment: ${{ needs.plan.outputs.environment }}
+      ref: ${{ needs.plan.outputs.ref }}
+      rollback: ${{ contains(needs.plan.outputs.actions, 'rollback') }}
+    secrets: inherit

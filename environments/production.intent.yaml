@@ -1,0 +1,7 @@
+name: production
+cloud: aws
+region: eu-central-1
+goal: High-availability production for a public launch. Survive a zone outage, no data loss.
+availability: critical
+budget_usd_month: 2500
+expected_rps: 120

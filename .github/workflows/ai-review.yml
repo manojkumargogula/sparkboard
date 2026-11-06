@@ -1,0 +1,72 @@
+name: AI review
+
+# Claude reviews every PR diff and assigns a risk label. Policy signals
+# (migrations, infra, pipelines) set a floor the model cannot lower.
+# High-risk PRs need two human approvals before the "risk gate" check passes.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    outputs:
+      risk: ${{ steps.review.outputs.risk }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: astral-sh/setup-uv@v6
+      - name: Diff against the base branch
+        run: git diff --unified=3 "origin/${{ github.base_ref }}...HEAD" > pr.diff
+      - name: Review
+        id: review
+        working-directory: tools/aiops
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run --frozen aiops review --diff ../../pr.diff
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: ai-review
+          message: ${{ steps.review.outputs.comment }}
+      - name: Label risk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          RISK: ${{ steps.review.outputs.risk }}
+        run: |
+          gh label create risk:low --force --color 0e8a16 >/dev/null
+          gh label create risk:medium --force --color fbca04 >/dev/null
+          gh label create risk:high --force --color d73a4a >/dev/null
+          gh pr edit "$PR" --remove-label risk:low --remove-label risk:medium --remove-label risk:high >/dev/null || true
+          gh pr edit "$PR" --add-label "risk:$RISK"
+
+  risk-gate:
+    needs: [review]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: High-risk changes need two approvals
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          labels=$(gh pr view "$PR" -R "$REPO" --json labels -q '.labels[].name')
+          if ! grep -qx 'risk:high' <<<"$labels"; then echo "Not high risk."; exit 0; fi
+          approvals=$(gh api "repos/$REPO/pulls/$PR/reviews" \
+            -q '[group_by(.user.login)[] | last | select(.state=="APPROVED")] | length')
+          echo "High risk PR with $approvals approval(s)."
+          [ "$approvals" -ge 2 ] || { echo "::error::risk:high requires 2 approvals"; exit 1; }

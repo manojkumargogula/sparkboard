@@ -1,0 +1,261 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.11.26"
+  NODE_VERSION: "22"
+  TF_VERSION: "1.16.1"
+
+jobs:
+  # Skip work for parts of the repo a change doesn't touch.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.f.outputs.api }}
+      web: ${{ steps.f.outputs.web }}
+      aiops: ${{ steps.f.outputs.aiops }}
+      iac: ${{ steps.f.outputs.iac }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: |
+            api: ['apps/api/**', 'docker/api.Dockerfile', 'requirements.txt']
+            web: ['apps/web/**', 'docker/web.Dockerfile', 'docker/nginx/**']
+            aiops: ['tools/aiops/**']
+            iac: ['infra/**', 'deploy/**']
+
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/api } }
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: sparkboard, POSTGRES_PASSWORD: sparkboard, POSTGRES_DB: sparkboard_test }
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sparkboard" --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
+      - run: uv sync --frozen
+      - name: Lint (ruff)
+        run: uv run ruff check --output-format github .
+      - name: Format (ruff)
+        run: uv run ruff format --check .
+      - name: Types (mypy --strict)
+        run: uv run mypy
+      - name: Security (bandit)
+        run: uv run bandit -q -c pyproject.toml -r src
+      - name: Dependency audit (pip-audit)
+        run: uv export --frozen --no-dev --no-hashes --format requirements-txt | uv run pip-audit --strict -r /dev/stdin
+      - name: Tests (pytest, coverage ≥ 85%)
+        run: uv run pytest
+      - name: Vercel requirements.txt is in sync with uv.lock
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt \
+            | grep -v '^#' | grep -v '^ ' | diff - ../../requirements.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: api-coverage, path: apps/api/coverage.xml, if-no-files-found: ignore }
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - name: Lint (eslint, strict type-checked + jsx-a11y)
+        run: npm run lint
+      - name: Format (prettier)
+        run: npm run format:check
+      - name: Types (tsc)
+        run: npm run typecheck
+      - name: Tests (vitest + coverage thresholds)
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Bundle size budget
+        run: npm run size
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+  aiops:
+    needs: changes
+    if: needs.changes.outputs.aiops == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: tools/aiops } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
+      - run: uv sync --frozen
+      - run: uv run ruff check --output-format github . && uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+
+  e2e:
+    needs: [api, web]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the stack (docker compose)
+        run: |
+          docker compose up -d --build --wait
+          docker compose --profile seed run --rm seed
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - name: Playwright
+        working-directory: apps/web
+        env: { E2E_BASE_URL: "http://localhost:8080" }
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npm run e2e
+      - if: failure()
+        run: docker compose logs --no-color > compose.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: e2e-report, path: "apps/web/playwright-report\ncompose.log" }
+
+  containers:
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.web == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { image: [api, web] }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dockerfile lint (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with: { dockerfile: "docker/${{ matrix.image }}.Dockerfile", failure-threshold: warning }
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/${{ matrix.image }}.Dockerfile
+          tags: sparkboard-${{ matrix.image }}:ci
+          load: true
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: Image scan (trivy, fail on HIGH/CRITICAL with a fix)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: sparkboard-${{ matrix.image }}:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  iac:
+    needs: changes
+    if: needs.changes.outputs.iac == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: { root: [aws, gcp, azure, vercel] }
+    defaults: { run: { working-directory: "infra/terraform/live/${{ matrix.root }}" } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: "${{ env.TF_VERSION }}" }
+      - name: terraform fmt
+        run: terraform fmt -check -recursive ../..
+      - name: terraform validate
+        run: terraform init -backend=false -input=false && terraform validate
+      - uses: terraform-linters/setup-tflint@v4
+      - name: tflint
+        run: tflint --init && tflint --recursive --chdir=../../modules --minimum-failure-severity=warning
+
+  iac-security:
+    needs: changes
+    if: needs.changes.outputs.iac == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Misconfiguration scan (trivy config)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+  helm:
+    needs: changes
+    if: needs.changes.outputs.iac == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: helm lint
+        run: helm lint deploy/helm/sparkboard -f deploy/helm/sparkboard/values-kind.yaml
+      - name: Render every cloud and validate against Kubernetes schemas
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          for v in kind aws gcp azure; do
+            helm template sb deploy/helm/sparkboard -f deploy/helm/sparkboard/values-$v.yaml \
+              --set secrets.databaseUrl=postgresql://ci@db/ci \
+              | ./kubeconform -strict -summary -kubernetes-version 1.33.0
+          done
+
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Workflow lint (actionlint)
+        uses: raven-actions/actionlint@v2
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # AI: when anything above fails on a PR, explain why in a comment.
+  explain-failure:
+    needs: [api, web, aiops, e2e, containers, iac, iac-security, helm, hygiene]
+    if: failure() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}" }
+      - name: Collect failed job logs
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh run view ${{ github.run_id }} --log-failed > failed.log || true
+          tail -c 40000 failed.log > tail.log
+      - name: Explain
+        id: explain
+        working-directory: tools/aiops
+        env: { ANTHROPIC_API_KEY: "${{ secrets.ANTHROPIC_API_KEY }}" }
+        run: uv run --frozen aiops explain --log ../../tail.log --job "CI"
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: ai-ci-explainer
+          message: ${{ steps.explain.outputs.comment }}

@@ -1,0 +1,30 @@
+# deps / builds
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+.coverage
+coverage.xml
+htmlcov/
+playwright-report/
+test-results/
+# env & secrets
+.env
+.env.*
+!.env.example
+*.tfvars.secret
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl.bak
+crash.log
+# vercel
+.vercel/
+# os
+.DS_Store

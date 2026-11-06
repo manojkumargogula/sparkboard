@@ -14,7 +14,7 @@ dependencies = [
 aiops = "aiops.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8.3,<9", "pytest-cov>=6,<7", "ruff>=0.8,<1", "mypy>=1.13,<2", "types-pyyaml", "respx>=0.21,<1"]
+dev = ["pytest>=8.3,<9", "pytest-cov>=7.1.0,<8", "ruff>=0.8,<1", "mypy>=1.13,<2", "types-pyyaml", "respx>=0.21,<1"]
 
 [build-system]
 requires = ["hatchling>=1.26"]

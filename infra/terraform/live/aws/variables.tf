@@ -33,3 +33,8 @@ variable "ai_api_key" {
   default   = ""
   sensitive = true
 }
+
+variable "api_allowed_cidrs" {
+  type        = list(string)
+  description = "CIDRs allowed to reach the Kubernetes API."
+}

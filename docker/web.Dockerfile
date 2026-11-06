@@ -15,8 +15,12 @@ LABEL org.opencontainers.image.title="sparkboard-web" \
       org.opencontainers.image.licenses="MIT"
 # The nginx image renders /etc/nginx/templates/*.template with envsubst at start.
 ENV API_UPSTREAM=http://api:8000
+# The base image lags Alpine security fixes; patch at build time.
+USER 0
+# hadolint ignore=DL3017
+RUN apk upgrade --no-cache
 COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 USER 101
 EXPOSE 8080
-HEALTHCHECK --interval=15s --timeout=3s CMD wget -qO- http://127.0.0.1:8080/nginx-health || exit 1
+HEALTHCHECK --interval=15s --timeout=3s CMD ["wget", "-qO-", "http://127.0.0.1:8080/nginx-health"]

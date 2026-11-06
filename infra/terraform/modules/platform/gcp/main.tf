@@ -103,6 +103,15 @@ resource "google_container_cluster" "this" {
   release_channel {
     channel = "REGULAR"
   }
+
+  master_authorized_networks_config {
+    dynamic "cidr_blocks" {
+      for_each = var.api_allowed_cidrs
+      content {
+        cidr_block = cidr_blocks.value
+      }
+    }
+  }
 }
 
 resource "random_password" "db" {

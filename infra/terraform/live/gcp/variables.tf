@@ -34,3 +34,8 @@ variable "ai_api_key" {
   sensitive = true
 }
 variable "project_id" { type = string }
+
+variable "api_allowed_cidrs" {
+  type        = list(string)
+  description = "CIDRs allowed to reach the Kubernetes API."
+}

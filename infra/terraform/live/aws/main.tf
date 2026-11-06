@@ -21,6 +21,8 @@ module "platform" {
   region      = var.region
   environment = var.environment
   size        = var.size
+
+  api_allowed_cidrs = var.api_allowed_cidrs
 }
 
 locals {

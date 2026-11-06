@@ -2,7 +2,7 @@
 # Sparkboard web: static Vite build served by unprivileged nginx, which also
 # reverse-proxies /api to the API so the browser sees a single origin.
 
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund

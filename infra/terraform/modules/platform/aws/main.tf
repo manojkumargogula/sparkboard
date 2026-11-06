@@ -11,7 +11,7 @@ data "aws_availability_zones" "available" {
 
 locals {
   azs  = slice(data.aws_availability_zones.available.names, 0, 3)
-  tags = merge(var.tags, { app = "sparkboard", environment = var.environment, managed-by = "terraform" })
+  tags = merge(var.tags, { app = "sparkboard", environment = var.environment, region = var.region, managed-by = "terraform" })
 }
 
 module "vpc" {

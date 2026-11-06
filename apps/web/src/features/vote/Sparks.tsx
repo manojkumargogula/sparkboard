@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 
-const COLORS = ["var(--color-ember)", "var(--color-amber)", "var(--color-flare)"];
+const COLORS = ["var(--color-cobalt)", "var(--color-cobalt-soft)", "#ffd166"];
 const COUNT = 10;
 
 /** A one-shot radial burst of embers. Rendered only while `burstKey` is set. */

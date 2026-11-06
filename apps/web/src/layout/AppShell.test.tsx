@@ -10,6 +10,7 @@ function setup(path = "/") {
   mockFetch({
     "GET /api/ideas": [makeIdea({ title: "Dark mode" })],
     "PUT /api/me": { display_name: "Grace", avatar_seed: "s" },
+    "GET /api/ai/status": { enabled: false, provider: "none" },
   });
   return renderApp(
     [
@@ -31,7 +32,7 @@ describe("AppShell", () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => vi.unstubAllGlobals());
 
-  it("navigates between board and roadmap", async () => {
+  it("navigates to the roadmap", async () => {
     setup();
     expect(screen.getByText("Board page")).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("link", { name: "Roadmap" })[0]!);
@@ -48,11 +49,17 @@ describe("AppShell", () => {
     expect(await screen.findByText("Roadmap page")).toBeInTheDocument();
   });
 
-  it("toggles the theme", async () => {
+  it("opens the composer with N", async () => {
     setup();
-    await userEvent.click(screen.getByRole("button", { name: /switch to dark theme/i }));
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(localStorage.getItem("sb-theme")).toBe("dark");
+    await userEvent.keyboard("n");
+    expect(await screen.findByLabelText("Your idea")).toBeInTheDocument();
+  });
+
+  it("opens and closes the mobile menu", async () => {
+    setup();
+    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("navigation", { name: "Mobile" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Close menu" }));
   });
 
   it("lets the visitor choose a name from the header", async () => {
@@ -68,6 +75,6 @@ describe("AppShell", () => {
 
   it("shows a helpful 404", () => {
     setup("/nope");
-    expect(screen.getByText("This page drifted off")).toBeInTheDocument();
+    expect(screen.getByText(/the thread/i)).toBeInTheDocument();
   });
 });

@@ -124,13 +124,15 @@ function NameForm({
           <Avatar author={preview} size="lg" />
         </motion.div>
         <div>
-          <h2 className="text-title font-bold">{initial ? "Edit your name" : "Say hi first"}</h2>
-          <p className="text-base text-muted">
+          <h2 className="pr-8 text-3xl tracking-[-0.04em]">
+            {initial ? "Edit your name" : "Say hi first"}
+          </h2>
+          <p className="text-base text-night/60">
             {reason ?? "No account needed. Your name shows on what you post."}
           </p>
         </div>
       </div>
-      <label htmlFor="display-name" className="mt-7 text-sm font-semibold text-muted">
+      <label htmlFor="display-name" className="label mt-8 block text-night/55">
         Display name
       </label>
       <div className="mt-2 flex gap-2">
@@ -140,20 +142,20 @@ function NameForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={placeholder}
-          className="h-14 min-w-0 flex-1 rounded-2xl border border-line bg-raised px-5 text-xl outline-none focus:border-iris"
+          className="h-14 min-w-0 flex-1 rounded-[6px] border border-night/15 bg-white px-4 text-xl text-night outline-none focus:border-cobalt"
         />
         <Button
-          variant="soft"
+          variant="outline"
           size="icon"
           aria-label="New avatar colours"
           onClick={() => setSeed(randomSeed())}
-          className="size-14"
+          className="size-14 text-night"
           icon={<Shuffle size={20} />}
         />
       </div>
       <Button
         type="submit"
-        variant="primary"
+        variant="cobalt"
         size="lg"
         disabled={saving}
         className="mt-6 justify-center"

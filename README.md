@@ -32,17 +32,18 @@ It is also a reference platform. The same app ships through an AI-assisted deliv
 
 The brief asked for a list of ideas and a form. Sparkboard keeps that contract exactly (`GET /api/ideas`, `POST /api/ideas` with `{"content": "..."}`, an `ideas` table with `id, content, created_at`) and builds a consumer-grade product around it:
 
-- **Heat.** Every idea glows warmer as it collects votes. A "Burning right now" leaderboard animates the hottest ones. Hot / New / Top sorting uses a gravity score, so fresh ideas can compete with old favourites.
-- **Voting that feels good.** Optimistic updates, a spring-animated counter, an ember spark burst, and confetti at 10 / 25 / 50 / 100 votes. One vote per device, enforced in the database.
+- **A landing page that is the product.** Inspired by editorial "problem board" sites: night and paper sections on a drafting grid, huge uppercase grotesk type, one electric cobalt accent. The hero prints the three most-wanted ideas as perforated tickets. Cut-out "sticker" stats are computed live from the board.
+- **Top 10 bento.** The most-voted ideas as a ranked grid of white, cobalt and slate tiles, each with a topic pill, rank, votes and a **heat score** (0–100, from votes and discussion).
+- **All ideas table.** Search, topic and status filters, and Heat / Rising / Newest sorting, all kept in the URL so every view is shareable. One vote per device is enforced in the database. Votes update optimistically with a spark burst, and confetti fires at 10 / 25 / 50 / 100 votes.
 - **Duplicates caught while typing.** The composer shows similar ideas live (Postgres trigram + word similarity), so people vote instead of reposting.
-- **AI "Sharpen".** One click suggests a clear headline, a tighter description and tags, shown as a suggestion you accept or dismiss. It is hidden when no AI key is configured.
+- **AI "Sharpen".** One click suggests a clear headline, a tighter description and tags. You accept or dismiss it. It is hidden when no AI key is configured.
 - **Idea sheet.** A shareable `/i/:id` side sheet (a bottom sheet on phones) with discussion and native share.
 - **Roadmap.** A four-column board (Open → Planned → Building → Shipped). Status changes are admin-only (`X-Admin-Token`).
-- **Command palette.** `⌘K` searches ideas and runs actions. `N` opens a new idea, `/` searches, `J`/`K` move between cards.
+- **Keyboard first.** `N` posts an idea, `/` or `⌘K` opens the command palette (search ideas, jump anywhere).
 - **No sign-up.** Anonymous identity is a random device token. Only its SHA-256 hash is stored. People pick a display name and a generated avatar the first time they vote or post.
-- **Polish.** Light and dark themes with a View-Transition cross-fade, skeletons, designed empty and error states, a "N new ideas" pill, reduced-motion support, PWA manifest, WCAG-minded focus and labels, and a 390 px-first layout.
+- **Polish.** Staggered reveals, ticket fan-out, a tag marquee, skeletons, designed empty and error states, reduced-motion support, a PWA manifest, an OG card, and a 390 px-first responsive layout.
 
-**Stack.** React 19 + TypeScript (strict) + Vite + Tailwind v4 + Motion + TanStack Query + Radix + cmdk. FastAPI + SQLAlchemy 2 (async) + asyncpg + Alembic + Pydantic v2. PostgreSQL 17.
+**Stack.** React 19 + TypeScript (strict) + Vite + Tailwind v4 + Motion + TanStack Query + Radix + cmdk, set in Host Grotesk / Anton / JetBrains Mono. FastAPI + SQLAlchemy 2 (async) + asyncpg + Alembic + Pydantic v2. PostgreSQL 17.
 
 ---
 

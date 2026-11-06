@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { Flame } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import { motion, useAnimationControls } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ async function celebrate(origin: DOMRect) {
     particleCount: 70,
     spread: 70,
     startVelocity: 32,
-    colors: ["#ff5a36", "#ffb224", "#e5266e", "#4b3fd8"],
+    colors: ["#2f54ff", "#fafafa", "#7d93ff", "#ffd166"],
     origin: {
       x: (origin.left + origin.width / 2) / window.innerWidth,
       y: (origin.top + origin.height / 2) / window.innerHeight,
@@ -28,21 +28,45 @@ async function celebrate(origin: DOMRect) {
   });
 }
 
-/** "Fan the flame": the one place the ember colour is used for an action. */
-export function VoteButton({ idea, size = "md" }: { idea: Idea; size?: "md" | "lg" }) {
+type Variant = "box" | "pill" | "pill-dark";
+
+const STYLES: Record<Variant, { base: string; on: string; off: string }> = {
+  // Table rows: a square counter, like a ballot box.
+  box: {
+    base: "h-14 w-14 flex-col justify-center gap-0 rounded-[6px] border text-sm",
+    on: "border-cobalt bg-cobalt text-white",
+    off: "border-white/15 text-snow hover:border-cobalt-soft hover:text-cobalt-soft",
+  },
+  // On light surfaces (sheet, white tiles).
+  pill: {
+    base: "h-12 gap-2 rounded-[6px] px-4 text-base",
+    on: "bg-cobalt text-white",
+    off: "bg-night/8 text-night hover:bg-cobalt hover:text-white",
+  },
+  // On dark / cobalt tiles.
+  "pill-dark": {
+    base: "h-10 gap-1.5 rounded-[6px] px-3 text-sm",
+    on: "bg-snow text-night",
+    off: "bg-white/12 text-current hover:bg-white/22",
+  },
+};
+
+export function VoteButton({ idea, variant = "box" }: { idea: Idea; variant?: Variant }) {
   const vote = useVote();
   const { ensureProfile } = useProfile();
   const controls = useAnimationControls();
   const [burst, setBurst] = useState(0);
+  const style = STYLES[variant];
 
   async function toggle(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
+    e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
     if (!(await ensureProfile("Pick a name so your votes count once."))) return;
     const up = !idea.voted;
     if (up) {
       setBurst((n) => n + 1);
-      void controls.start({ scale: [1, 1.28, 0.94, 1], rotate: [0, -12, 6, 0] });
+      void controls.start({ y: [0, -5, 0], scale: [1, 1.25, 1] });
       if (MILESTONES.has(idea.vote_count + 1)) void celebrate(rect);
     }
     vote.mutate(
@@ -58,19 +82,14 @@ export function VoteButton({ idea, size = "md" }: { idea: Idea; size?: "md" | "l
       aria-pressed={idea.voted}
       aria-label={`${idea.voted ? "Remove your vote from" : "Vote for"} this idea, ${idea.vote_count} votes`}
       className={clsx(
-        "group relative inline-flex items-center gap-2 rounded-full font-mono font-semibold transition-colors",
-        size === "lg" ? "h-14 px-6 text-lg" : "h-11 px-4 text-base",
-        idea.voted
-          ? "bg-ember text-white shadow-[0_10px_24px_-10px_rgb(255_90_54/0.7)]"
-          : "bg-raised text-ink hover:bg-ember/10 hover:text-ember",
+        "relative z-10 inline-flex shrink-0 items-center font-mono font-medium transition-colors",
+        style.base,
+        idea.voted ? style.on : style.off,
       )}
     >
       {burst > 0 && <Sparks burstKey={burst} />}
-      <motion.span animate={controls} transition={{ duration: 0.45 }} className="inline-flex">
-        <Flame
-          size={size === "lg" ? 22 : 18}
-          className={clsx("transition-[fill]", idea.voted ? "fill-amber" : "fill-transparent")}
-        />
+      <motion.span animate={controls} transition={{ duration: 0.4 }} className="inline-flex">
+        <ChevronUp size={variant === "box" ? 18 : 18} strokeWidth={2.5} />
       </motion.span>
       <CountRoll value={idea.vote_count} />
     </button>

@@ -1,4 +1,4 @@
-import { Flame } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Link } from "react-router";
 
@@ -19,20 +19,17 @@ export function SimilarHints({ text }: { text: string }) {
           exit={{ height: 0, opacity: 0 }}
           className="overflow-hidden"
         >
-          <p className="pt-4 text-sm font-semibold text-muted">
-            Already on the board? Vote instead.
-          </p>
+          <p className="label pt-4 text-night/50">Already on the board? Vote for it instead.</p>
           <ul className="mt-2 flex flex-col gap-1.5">
             {hits.map((s) => (
               <li key={s.id}>
                 <Link
                   to={`/i/${s.id}`}
-                  className="flex items-center gap-3 rounded-2xl bg-raised px-4 py-3 text-base transition-colors hover:bg-iris-soft"
+                  className="group flex items-center gap-3 rounded-[6px] bg-white px-4 py-3 text-base text-night ring-1 ring-night/8 transition hover:ring-cobalt"
                 >
                   <span className="line-clamp-1 flex-1">{s.title ?? s.content}</span>
-                  <span className="inline-flex items-center gap-1 font-mono text-sm text-ember">
-                    <Flame size={14} /> {s.vote_count}
-                  </span>
+                  <span className="font-mono text-sm text-night/50">{s.vote_count} votes</span>
+                  <ArrowUpRight size={16} className="text-night/40 group-hover:text-cobalt" />
                 </Link>
               </li>
             ))}

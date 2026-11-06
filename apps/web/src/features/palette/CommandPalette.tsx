@@ -1,11 +1,9 @@
-import { Command } from "cmdk";
-import { Flame, Map, Moon, PenLine, Search, UserRound } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Command } from "cmdk";
+import { ChevronUp, Map, PenLine, Search, Trophy, UserRound } from "lucide-react";
+import { useState } from "react";
 
 import { api } from "@/lib/api";
-import { applyTheme, currentTheme } from "@/lib/theme";
 import { useDebounced } from "@/lib/useDebounced";
 import { Kbd } from "@/ui/Kbd";
 import { Modal } from "@/ui/Modal";
@@ -16,15 +14,17 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onNewIdea: () => void;
+  onNavigate: (to: string) => void;
 }
 
 const item =
-  "flex h-14 cursor-pointer items-center gap-3 rounded-2xl px-4 text-lg data-[selected=true]:bg-iris-soft data-[selected=true]:text-ink";
+  "flex h-13 cursor-pointer items-center gap-3 rounded-[6px] px-3 text-[17px] text-night data-[selected=true]:bg-cobalt data-[selected=true]:text-white";
+const group =
+  "text-night/50 [&_[cmdk-group-heading]]:label [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2";
 
-export function CommandPalette({ open, onOpenChange, onNewIdea }: Props) {
+export function CommandPalette({ open, onOpenChange, onNewIdea, onNavigate }: Props) {
   const [value, setValue] = useState("");
   const q = useDebounced(value.trim(), 200);
-  const navigate = useNavigate();
   const { editProfile } = useProfile();
   const results = useQuery({
     queryKey: ["palette", q],
@@ -36,7 +36,6 @@ export function CommandPalette({ open, onOpenChange, onNewIdea }: Props) {
     if (!next) setValue("");
     onOpenChange(next);
   };
-
   const run = (fn: () => void) => () => {
     setOpen(false);
     fn();
@@ -44,72 +43,63 @@ export function CommandPalette({ open, onOpenChange, onNewIdea }: Props) {
 
   return (
     <Modal open={open} onOpenChange={setOpen} title="Command palette">
-      <Command label="Command palette" shouldFilter={false} className="-m-2">
-        <div className="flex items-center gap-3 border-b border-line px-3 pb-4">
-          <Search size={22} className="text-muted" aria-hidden />
+      <Command label="Command palette" shouldFilter={false}>
+        <div className="flex items-center gap-3 border-b border-night/10 pr-8 pb-4">
+          <Search size={22} className="text-night/40" aria-hidden />
           <Command.Input
             value={value}
             onValueChange={setValue}
             placeholder="Search ideas or type a command"
-            className="h-12 min-w-0 flex-1 bg-transparent text-xl outline-none placeholder:text-muted/70"
+            className="h-11 min-w-0 flex-1 bg-transparent text-xl text-night outline-none placeholder:text-night/35"
           />
         </div>
         <Command.List className="mt-3 max-h-[min(26rem,60dvh)] overflow-y-auto">
-          <Command.Empty className="px-4 py-8 text-center text-muted">
+          <Command.Empty className="px-3 py-8 text-center text-night/50">
             No ideas match that.
           </Command.Empty>
           {(results.data?.length ?? 0) > 0 && (
-            <Command.Group
-              heading="Ideas"
-              className="text-sm text-muted [&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2"
-            >
+            <Command.Group heading="Ideas" className={group}>
               {results.data?.map((idea) => (
                 <Command.Item
                   key={idea.id}
                   value={`idea-${idea.id}`}
-                  onSelect={run(() => void navigate(`/i/${idea.id}`))}
+                  onSelect={run(() => onNavigate(`/i/${idea.id}`))}
                   className={item}
                 >
-                  <Flame size={18} className="shrink-0 text-ember" />
-                  <span className="line-clamp-1 flex-1 text-ink">{idea.title ?? idea.content}</span>
-                  <span className="font-mono text-sm">{idea.vote_count}</span>
+                  <span className="line-clamp-1 flex-1">{idea.title ?? idea.content}</span>
+                  <span className="inline-flex items-center gap-1 font-mono text-sm opacity-70">
+                    <ChevronUp size={14} />
+                    {idea.vote_count}
+                  </span>
                 </Command.Item>
               ))}
             </Command.Group>
           )}
-          <Command.Group
-            heading="Actions"
-            className="text-sm text-muted [&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2"
-          >
+          <Command.Group heading="Actions" className={group}>
             {q && (
               <Command.Item
                 value="search-all"
-                onSelect={run(() => void navigate(`/?q=${encodeURIComponent(q)}`))}
+                onSelect={run(() => onNavigate(`/?q=${encodeURIComponent(q)}#all-ideas`))}
                 className={item}
               >
-                <Search size={18} /> <span className="text-ink">Show every result for “{q}”</span>
+                <Search size={18} /> Show every result for “{q}”
               </Command.Item>
             )}
             <Command.Item value="new" onSelect={run(onNewIdea)} className={item}>
-              <PenLine size={18} /> <span className="flex-1 text-ink">Post an idea</span>{" "}
-              <Kbd>N</Kbd>
+              <PenLine size={18} /> <span className="flex-1">Post an idea</span> <Kbd>N</Kbd>
+            </Command.Item>
+            <Command.Item value="top" onSelect={run(() => onNavigate("/#top-10"))} className={item}>
+              <Trophy size={18} /> See the top 10
             </Command.Item>
             <Command.Item
               value="roadmap"
-              onSelect={run(() => void navigate("/roadmap"))}
+              onSelect={run(() => onNavigate("/roadmap"))}
               className={item}
             >
-              <Map size={18} /> <span className="text-ink">Open the roadmap</span>
-            </Command.Item>
-            <Command.Item
-              value="theme"
-              onSelect={run(() => applyTheme(currentTheme() === "dark" ? "light" : "dark"))}
-              className={item}
-            >
-              <Moon size={18} /> <span className="text-ink">Switch theme</span>
+              <Map size={18} /> Open the roadmap
             </Command.Item>
             <Command.Item value="name" onSelect={run(editProfile)} className={item}>
-              <UserRound size={18} /> <span className="text-ink">Change your name</span>
+              <UserRound size={18} /> Change your name
             </Command.Item>
           </Command.Group>
         </Command.List>

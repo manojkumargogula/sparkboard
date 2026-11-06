@@ -1,4 +1,4 @@
-import { compact, heat, plural, seedHue, timeAgo } from "./format";
+import { compact, heat, heatScore, plural, seedHue, timeAgo } from "./format";
 
 describe("format", () => {
   it("formats relative time", () => {
@@ -19,6 +19,8 @@ describe("format", () => {
     expect(heat(5, 0)).toBe(0);
     expect(heat(100, 100)).toBe(1);
     expect(heat(2, 100)).toBeGreaterThan(0.2);
+    expect(heatScore(0, 0, 0)).toBe(35);
+    expect(heatScore(10, 4, 12)).toBe(99.9);
   });
 
   it("derives a stable hue from a seed", () => {

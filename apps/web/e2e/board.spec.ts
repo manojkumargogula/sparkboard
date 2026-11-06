@@ -4,9 +4,10 @@ const unique = () => `E2E idea ${Date.now()} ${Math.random().toString(36).slice(
 
 test("post an idea, vote on it and comment", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /what should we build next/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/what should/i);
 
   const text = unique();
+  await page.getByRole("button", { name: "Post an idea" }).first().click();
   await page.getByLabel("Your idea").fill(text);
   await page.getByPlaceholder(/tags/).fill("e2e");
   await page.getByRole("button", { name: "Post idea" }).click();
@@ -15,13 +16,15 @@ test("post an idea, vote on it and comment", async ({ page }) => {
   await page.getByLabel("Display name").fill("Playwright");
   await page.getByRole("button", { name: "Save name" }).click();
 
-  const card = page.locator("article", { hasText: text });
-  await expect(card).toBeVisible();
+  const all = page.getByRole("region", { name: /all ideas/i });
+  await all.getByRole("button", { name: "Newest" }).click();
+  const row = all.locator("li", { hasText: text });
+  await expect(row).toBeVisible();
 
-  await card.getByRole("button", { name: /vote for this idea/i }).click();
-  await expect(card.getByRole("button", { name: /remove your vote/i })).toBeVisible();
+  await row.getByRole("button", { name: /vote for this idea/i }).click();
+  await expect(row.getByRole("button", { name: /remove your vote/i })).toBeVisible();
 
-  await card.getByRole("link").first().click();
+  await row.getByRole("link").first().click();
   await expect(page).toHaveURL(/\/i\/\d+/);
   await page.getByLabel("Add a comment").fill("Looks great");
   await page.getByRole("button", { name: "Post comment" }).click();
@@ -38,7 +41,7 @@ test("search from the command palette", async ({ page, isMobile }) => {
   await page.keyboard.press("Control+k");
   await page.getByPlaceholder(/search ideas or type a command/i).fill("roadmap");
   await page.getByText("Open the roadmap").click();
-  await expect(page.getByRole("heading", { name: /from spark/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/from spark/i);
 });
 
 test("roadmap shows all four columns", async ({ page }) => {

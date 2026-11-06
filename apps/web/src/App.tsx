@@ -1,28 +1,45 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
-import { createBrowserRouter, RouterProvider } from "react-router";
+import { createBrowserRouter, Outlet, RouterProvider } from "react-router";
 import { Toaster } from "sonner";
 
-import { createQueryClient } from "./lib/queryClient";
-import { FeedPage } from "./features/feed/FeedPage";
+import { ComposerProvider } from "./features/composer/ComposerProvider";
+import { LandingPage } from "./features/landing/LandingPage";
 import { ProfileProvider } from "./features/profile/ProfileProvider";
 import { RoadmapPage } from "./features/roadmap/RoadmapPage";
 import { AppShell } from "./layout/AppShell";
 import { NotFound } from "./layout/NotFound";
+import { createQueryClient } from "./lib/queryClient";
 
-const router = createBrowserRouter([
+/** Providers that need the router (the composer links to ideas). */
+function RoutedProviders() {
+  return (
+    <ComposerProvider>
+      <Outlet />
+    </ComposerProvider>
+  );
+}
+
+const routes = [
   {
-    element: <AppShell />,
+    element: <RoutedProviders />,
     children: [
-      { path: "/", element: <FeedPage /> },
-      { path: "/i/:id", element: <FeedPage /> },
-      { path: "/roadmap", element: <RoadmapPage /> },
-      { path: "/roadmap/i/:id", element: <RoadmapPage /> },
-      { path: "*", element: <NotFound /> },
+      {
+        element: <AppShell />,
+        children: [
+          { path: "/", element: <LandingPage /> },
+          { path: "/i/:id", element: <LandingPage /> },
+          { path: "/board", element: <LandingPage /> },
+          { path: "/roadmap", element: <RoadmapPage /> },
+          { path: "/roadmap/i/:id", element: <RoadmapPage /> },
+          { path: "*", element: <NotFound /> },
+        ],
+      },
     ],
   },
-]);
+];
 
+const router = createBrowserRouter(routes);
 const queryClient = createQueryClient();
 
 export function App() {
@@ -35,9 +52,9 @@ export function App() {
         <Toaster
           position="bottom-center"
           toastOptions={{
-            className: "!rounded-2xl !text-base !font-sans !bg-ink !text-canvas !border-0",
+            className:
+              "!rounded-[6px] !text-[15px] !font-sans !bg-snow !text-night !border-0 !shadow-2xl",
           }}
-          offset={96}
         />
       </MotionConfig>
     </QueryClientProvider>

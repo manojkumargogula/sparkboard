@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 
-/** Circular character budget. Turns ember near the limit. */
+/** Circular character budget. Turns cobalt-red near the limit. */
 export function CharRing({ used, max }: { used: number; max: number }) {
   const r = 14;
   const c = 2 * Math.PI * r;
@@ -13,7 +13,7 @@ export function CharRing({ used, max }: { used: number; max: number }) {
       title={`${left} characters left`}
     >
       <svg viewBox="0 0 36 36" className="size-10 -rotate-90" aria-hidden>
-        <circle cx="18" cy="18" r={r} fill="none" stroke="var(--sb-line)" strokeWidth="3" />
+        <circle cx="18" cy="18" r={r} fill="none" stroke="rgb(18 18 18 / 0.12)" strokeWidth="3" />
         <motion.circle
           cx="18"
           cy="18"
@@ -21,7 +21,7 @@ export function CharRing({ used, max }: { used: number; max: number }) {
           fill="none"
           strokeWidth="3"
           strokeLinecap="round"
-          stroke={warn ? "var(--color-ember)" : "var(--sb-iris)"}
+          stroke={warn ? "#e5484d" : "var(--color-cobalt)"}
           strokeDasharray={c}
           animate={{ strokeDashoffset: c * (1 - ratio) }}
           transition={{ type: "spring", stiffness: 200, damping: 30 }}
@@ -29,7 +29,7 @@ export function CharRing({ used, max }: { used: number; max: number }) {
       </svg>
       {warn && (
         <span
-          className="absolute font-mono text-[10px] font-semibold text-ember"
+          className="absolute font-mono text-[10px] font-semibold text-[#e5484d]"
           aria-live="polite"
         >
           {left}

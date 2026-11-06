@@ -13,7 +13,7 @@ import { StatusBadge } from "@/ui/StatusBadge";
 import { VoteButton } from "../vote/VoteButton";
 import { Comments } from "./Comments";
 
-/** Idea detail as a side sheet (bottom sheet on phones). The URL `/i/:id` is shareable. */
+/** Idea detail as a side sheet (bottom sheet on phones). `/i/:id` is shareable. */
 export function IdeaSheet({ basePath }: { basePath: string }) {
   const { id } = useParams();
   const ideaId = id ? Number(id) : null;
@@ -45,59 +45,60 @@ export function IdeaSheet({ basePath }: { basePath: string }) {
       }}
       title={idea?.title ?? "Idea"}
       placement="side"
+      width="42rem"
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-6 sm:p-9">
-        <div className="mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-line sm:hidden" />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 pt-8 pb-10 sm:px-10 sm:pt-12">
         {isError && (
-          <p className="py-20 text-center text-xl text-muted">This idea no longer exists.</p>
+          <p className="py-20 text-center text-xl text-night/60">This idea no longer exists.</p>
         )}
         {!idea && !isError && (
-          <div aria-hidden>
-            <div className="skeleton h-9 w-40" />
-            <div className="skeleton mt-8 h-10 w-full" />
-            <div className="skeleton mt-3 h-10 w-2/3" />
+          <div aria-hidden className="space-y-4">
+            <div className="h-7 w-32 animate-pulse rounded bg-night/10" />
+            <div className="h-12 w-full animate-pulse rounded bg-night/10" />
+            <div className="h-12 w-2/3 animate-pulse rounded bg-night/10" />
           </div>
         )}
         {idea && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex items-center gap-3 pr-10">
-              <Avatar author={idea.author} />
-              <div className="leading-tight">
-                <p className="font-semibold">{idea.author?.display_name ?? "Anonymous"}</p>
-                <p className="font-mono text-xs text-muted">{timeAgo(idea.created_at)}</p>
-              </div>
-              <div className="ml-auto">
-                <StatusBadge status={idea.status} />
-              </div>
+          <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex flex-wrap items-center gap-2 pr-10">
+              {idea.tags.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex h-7 items-center rounded-[4px] border border-night/15 bg-white px-2.5 text-[13px] font-medium capitalize"
+                >
+                  {t.replace(/-/g, " ")}
+                </span>
+              ))}
+              <StatusBadge status={idea.status} showOpen />
             </div>
+            <h2 className="mt-7 text-[clamp(2rem,1.4rem+2.2vw,3rem)] leading-[1.02] tracking-[-0.04em]">
+              {idea.title ?? idea.content}
+            </h2>
             {idea.title && (
-              <h2 className="mt-8 text-title font-extrabold text-balance">{idea.title}</h2>
+              <p className="mt-5 text-xl leading-relaxed text-night/75">{idea.content}</p>
             )}
-            <p
-              className={
-                idea.title ? "mt-4 text-xl text-pretty" : "mt-8 text-title font-bold text-pretty"
-              }
-            >
-              {idea.content}
-            </p>
-            {idea.tags.length > 0 && (
-              <p className="mt-4 font-mono text-sm text-muted">
-                {idea.tags.map((t) => `#${t}`).join("  ")}
-              </p>
-            )}
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <VoteButton idea={idea} size="lg" />
+
+            <div className="mt-7 flex items-center gap-3 text-sm text-night/60">
+              <Avatar author={idea.author} size="sm" />
+              <span className="font-medium text-night">
+                {idea.author?.display_name ?? "Anonymous"}
+              </span>
+              <span className="font-mono text-xs">posted {timeAgo(idea.created_at)}</span>
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <VoteButton idea={idea} variant="pill" />
               <Button
-                variant="soft"
-                size="lg"
+                variant="outline"
+                className="h-12 text-night"
                 onClick={() => void share()}
-                icon={<Link2 size={20} />}
+                icon={<Link2 size={18} />}
               >
                 Share
               </Button>
             </div>
             <Comments ideaId={idea.id} />
-          </motion.div>
+          </motion.article>
         )}
       </div>
     </Modal>

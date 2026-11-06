@@ -160,7 +160,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
       - name: Image scan (trivy, fail on HIGH/CRITICAL with a fix)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: sparkboard-${{ matrix.image }}:ci
           severity: HIGH,CRITICAL
@@ -194,7 +194,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Misconfiguration scan (trivy config)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: .

@@ -38,7 +38,7 @@ jobs:
       ROOT: infra/terraform/live/${{ inputs.cloud == 'k8s-aws' && 'aws' || inputs.cloud == 'k8s-gcp' && 'gcp' || 'azure' }}
       TAG: ${{ inputs.ref || github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { ref: "${{ inputs.ref || github.sha }}" }
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_wrapper: false }

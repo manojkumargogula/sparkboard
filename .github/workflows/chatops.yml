@@ -31,7 +31,7 @@ jobs:
       actions: ${{ steps.plan.outputs.actions }}
       ref: ${{ steps.pr.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Acknowledge
         env: { GH_TOKEN: "${{ github.token }}" }
         run: gh api "repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" -f content=eyes >/dev/null

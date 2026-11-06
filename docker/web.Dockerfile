@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY apps/web ./
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 LABEL org.opencontainers.image.title="sparkboard-web" \
       org.opencontainers.image.source="https://github.com/manojkumargogula/sparkboard" \
       org.opencontainers.image.licenses="MIT"

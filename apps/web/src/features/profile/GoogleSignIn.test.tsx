@@ -40,6 +40,8 @@ describe("Google sign-in", () => {
             el.appendChild(b);
           },
           disableAutoSelect: vi.fn(),
+          prompt: vi.fn(),
+          cancel: vi.fn(),
         },
       },
     };
@@ -80,6 +82,17 @@ describe("Google sign-in", () => {
     await user.click(screen.getByRole("button", { name: "Sign out" }));
     await waitFor(() => expect(screen.getByText("who: nobody")).toBeInTheDocument());
     expect(savedProfile()).toBeNull();
+  });
+
+  it("shows Google One Tap on load and signs in from it", async () => {
+    mockFetch({
+      "GET /api/auth/config": { google_client_id: "cid", auth_required: true },
+      "POST /api/auth/google": { display_name: "Tap User", avatar_seed: "t", signed_in: true },
+    });
+    renderApp([{ path: "/", element: <Probe /> }]);
+    await waitFor(() => expect(window.google?.accounts.id.prompt).toHaveBeenCalled());
+    callback?.({ credential: "one-tap-token" });
+    expect(await screen.findByText("who: Tap User")).toBeInTheDocument();
   });
 
   it("offers a name-only fallback when sign-in is optional", async () => {

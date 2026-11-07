@@ -11,7 +11,12 @@ interface GoogleId {
     ux_mode?: "popup" | "redirect";
     auto_select?: boolean;
     cancel_on_tap_outside?: boolean;
+    context?: "signin" | "signup" | "use";
+    itp_support?: boolean;
+    use_fedcm_for_prompt?: boolean;
   }) => void;
+  prompt: () => void;
+  cancel: () => void;
   renderButton: (
     parent: HTMLElement,
     options: {
@@ -78,6 +83,32 @@ export async function renderGoogleButton(
     logo_alignment: "left",
     width: Math.min(el.clientWidth || 360, 400),
   });
+}
+
+/**
+ * Google One Tap: the "Continue as …" card Google shows on page load for people
+ * already signed in to Google in this browser. Google rate-limits it after a
+ * dismissal, so it never nags. Uses FedCM where the browser supports it.
+ */
+export async function promptOneTap(
+  clientId: string,
+  onCredential: (credential: string) => void,
+): Promise<void> {
+  const id = await loadGoogle();
+  id.initialize({
+    client_id: clientId,
+    callback: (r) => onCredential(r.credential),
+    auto_select: true,
+    cancel_on_tap_outside: true,
+    context: "signin",
+    itp_support: true,
+    use_fedcm_for_prompt: true,
+  });
+  id.prompt();
+}
+
+export function cancelOneTap(): void {
+  window.google?.accounts.id.cancel();
 }
 
 export function forgetGoogleSession(): void {

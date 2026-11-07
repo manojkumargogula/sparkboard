@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { type Profile, saveProfile, savedProfile } from "@/lib/device";
-import { forgetGoogleSession, renderGoogleButton } from "@/lib/google";
+import { cancelOneTap, forgetGoogleSession, promptOneTap, renderGoogleButton } from "@/lib/google";
 import { Avatar } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
 import { Modal } from "@/ui/Modal";
@@ -55,6 +55,29 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     },
     [canWrite],
   );
+
+  // Offer Google One Tap as soon as a signed-out visitor lands on the page.
+  const signedIn = Boolean(profile?.signed_in);
+  useEffect(() => {
+    if (!googleClientId || signedIn) return;
+    promptOneTap(googleClientId, (credential) => {
+      api
+        .googleSignIn(credential)
+        .then((me) => {
+          saveProfile(me);
+          setProfile(me);
+          setOpen(false);
+          settle(true);
+          toast.success(`Welcome, ${me.display_name}`);
+        })
+        .catch((err: unknown) => {
+          toast.error(err instanceof Error ? err.message : "Google sign-in failed");
+        });
+    }).catch(() => {
+      /* Google unreachable or blocked: the Sign in button still works */
+    });
+    return () => cancelOneTap();
+  }, [googleClientId, signedIn, settle]);
 
   const signOut = useCallback(async () => {
     try {

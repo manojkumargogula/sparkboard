@@ -11,7 +11,7 @@ export function TagMarquee() {
         {[...run, ...run].map((w, i) => (
           <span key={i} className="flex items-center gap-10">
             {w}
-            <span className="text-2xl text-white/60">✶</span>
+            <span className="text-2xl text-white/60">↑</span>
           </span>
         ))}
       </div>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
@@ -62,21 +63,48 @@ def device_hash(
 DeviceHashDep = Annotated[str | None, Depends(device_hash)]
 
 
-async def viewer_id(session: SessionDep, digest: DeviceHashDep) -> uuid.UUID | None:
-    """The current author's id, or None for anonymous callers."""
+@dataclass(frozen=True)
+class Viewer:
+    id: uuid.UUID
+    signed_in: bool
+
+
+async def current_viewer(session: SessionDep, digest: DeviceHashDep) -> Viewer | None:
     if digest is None:
         return None
     author = await AuthorRepository(session).by_device(digest)
-    return author.id if author else None
+    return Viewer(id=author.id, signed_in=author.google_sub is not None) if author else None
+
+
+CurrentViewerDep = Annotated[Viewer | None, Depends(current_viewer)]
+
+
+async def viewer_id(viewer: CurrentViewerDep) -> uuid.UUID | None:
+    """The current author's id, or None for anonymous callers."""
+    return viewer.id if viewer else None
 
 
 ViewerDep = Annotated[uuid.UUID | None, Depends(viewer_id)]
 
+SIGN_IN_REQUIRED = "Sign in with Google to post, vote or comment"
 
-async def require_viewer(viewer: ViewerDep) -> uuid.UUID:
-    if viewer is None:
+
+async def writer_id(viewer: CurrentViewerDep, settings: SettingsDep) -> uuid.UUID | None:
+    """Who is writing. With AUTH_REQUIRED only signed-in Google accounts may write;
+    otherwise anonymous writes stay allowed (the brief's curl contract)."""
+    if settings.auth_required and (viewer is None or not viewer.signed_in):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, SIGN_IN_REQUIRED)
+    return viewer.id if viewer else None
+
+
+WriterDep = Annotated[uuid.UUID | None, Depends(writer_id)]
+
+
+async def require_viewer(writer: WriterDep) -> uuid.UUID:
+    """Votes always need an identity, so each person counts once."""
+    if writer is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Pick a display name first (PUT /api/me)")
-    return viewer
+    return writer
 
 
 RequiredViewerDep = Annotated[uuid.UUID, Depends(require_viewer)]

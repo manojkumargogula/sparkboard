@@ -39,9 +39,25 @@ class Author(Base):
     __tablename__ = "authors"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    device_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    # Legacy/system key (anonymous profiles, importers). Devices link via AuthorDevice.
+    device_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
     display_name: Mapped[str] = mapped_column(String(40))
     avatar_seed: Mapped[str] = mapped_column(String(40))
+    google_sub: Mapped[str | None] = mapped_column(String(64), unique=True)
+    email: Mapped[str | None] = mapped_column(String(320))
+    picture_url: Mapped[str | None] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuthorDevice(Base):
+    """A browser (device token hash) signed in as an author."""
+
+    __tablename__ = "author_devices"
+
+    device_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    author_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("authors.id", ondelete="CASCADE"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

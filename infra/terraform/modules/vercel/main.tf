@@ -21,6 +21,12 @@ variable "neon_region" {
   default = "aws-eu-central-1"
 }
 
+variable "google_client_id" {
+  type        = string
+  default     = ""
+  description = "Public OAuth client ID for Continue with Google; enables AUTH_REQUIRED."
+}
+
 variable "ai_api_key" {
   type      = string
   default   = ""
@@ -58,16 +64,22 @@ locals {
     ADMIN_TOKEN   = { value = random_password.admin.result, sensitive = true }
     AI_PROVIDER   = { value = var.ai_api_key == "" ? "none" : "anthropic", sensitive = false }
     AI_API_KEY    = { value = var.ai_api_key, sensitive = true }
+    AUTH_REQUIRED = { value = var.google_client_id == "" ? "false" : "true", sensitive = false }
   }
+  # Optional keys, added only when set (keys must not depend on sensitive values).
+  optional_env = var.google_client_id == "" ? {} : {
+    GOOGLE_CLIENT_ID = { value = var.google_client_id, sensitive = false }
+  }
+  all_env = merge(local.env, local.optional_env)
 }
 
 resource "vercel_project_environment_variable" "env" {
   # Keys are not secret; only whether the AI key is set decides the set of keys.
-  for_each   = setsubtract(keys(local.env), nonsensitive(var.ai_api_key == "") ? ["AI_API_KEY"] : [])
+  for_each   = setsubtract(keys(local.all_env), nonsensitive(var.ai_api_key == "") ? ["AI_API_KEY"] : [])
   project_id = vercel_project.this.id
   key        = each.key
-  value      = local.env[each.key].value
-  sensitive  = local.env[each.key].sensitive
+  value      = local.all_env[each.key].value
+  sensitive  = local.all_env[each.key].sensitive
   target     = ["production", "preview"]
 }
 

@@ -37,7 +37,7 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const create = useCreateIdea();
   const ai = useAiStatus();
-  const { ensureProfile } = useProfile();
+  const { ensureProfile, authRequired } = useProfile();
 
   const trimmed = content.trim();
   const canPost = trimmed.length >= 3 && trimmed.length <= MAX && !create.isPending;
@@ -56,8 +56,12 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
   async function post(e: React.SyntheticEvent) {
     e.preventDefault();
     if (!canPost) return;
-    // Posting anonymously is allowed; a name is offered but never forced.
-    await ensureProfile("Add a name to your idea, or close this to post anonymously.");
+    const ok = await ensureProfile(
+      authRequired
+        ? "Sign in to post your idea."
+        : "Add a name to your idea, or close this to post anonymously.",
+    );
+    if (!ok && authRequired) return;
     create.mutate(
       { content: trimmed, ...(title.trim() ? { title: title.trim() } : {}), tags: parseTags(tags) },
       {

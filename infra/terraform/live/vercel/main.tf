@@ -20,6 +20,11 @@ variable "domain" {
   default = "ideas.infrenic.com"
 }
 
+variable "google_client_id" {
+  type    = string
+  default = "629804819571-qh79ptmg6ahavq1itcoq1q72h0feb1t8.apps.googleusercontent.com"
+}
+
 variable "ai_api_key" {
   type      = string
   default   = ""
@@ -27,10 +32,11 @@ variable "ai_api_key" {
 }
 
 module "vercel" {
-  source      = "../../modules/vercel"
-  github_repo = var.github_repo
-  domain      = var.domain
-  ai_api_key  = var.ai_api_key
+  source           = "../../modules/vercel"
+  github_repo      = var.github_repo
+  domain           = var.domain
+  ai_api_key       = var.ai_api_key
+  google_client_id = var.google_client_id
 }
 
 output "project_id" { value = module.vercel.project_id }

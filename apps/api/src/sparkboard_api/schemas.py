@@ -37,6 +37,7 @@ class AuthorOut(BaseModel):
 
     display_name: str
     avatar_seed: str
+    picture_url: str | None = None
 
 
 class MeIn(BaseModel):
@@ -47,7 +48,16 @@ class MeIn(BaseModel):
 
 
 class MeOut(AuthorOut):
-    pass
+    signed_in: bool = False
+
+
+class GoogleSignIn(BaseModel):
+    credential: Annotated[str, StringConstraints(min_length=20, max_length=4096)]
+
+
+class AuthConfig(BaseModel):
+    google_client_id: str | None
+    auth_required: bool
 
 
 class IdeaCreate(BaseModel):

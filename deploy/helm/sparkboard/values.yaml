@@ -17,6 +17,8 @@ api:
     LOG_JSON: "true"
     AI_PROVIDER: none
     AI_MODEL: claude-opus-5-5
+    GOOGLE_CLIENT_ID: ""          # public OAuth client ID for "Continue with Google"
+    AUTH_REQUIRED: "false"        # "true": posting/voting/commenting need Google sign-in
 
 web:
   replicas: 2

@@ -56,7 +56,12 @@ async def test_profile_roundtrip(client: httpx.AsyncClient) -> None:
     await client.put("/api/me", json={"display_name": "Ada", "avatar_seed": "a"}, headers=token)
     await client.put("/api/me", json={"display_name": "Ada L", "avatar_seed": "b"}, headers=token)
     me = (await client.get("/api/me", headers=token)).json()
-    assert me == {"display_name": "Ada L", "avatar_seed": "b"}
+    assert me == {
+        "display_name": "Ada L",
+        "avatar_seed": "b",
+        "picture_url": None,
+        "signed_in": False,
+    }
     assert (await client.put("/api/me", json={"display_name": "x"})).status_code == 401
 
 

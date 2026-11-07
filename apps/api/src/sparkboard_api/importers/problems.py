@@ -70,7 +70,7 @@ def ranked(problems: list[Problem]) -> list[tuple[int, Problem]]:
 async def import_problems(session: AsyncSession, problems: list[Problem]) -> tuple[int, int]:
     """Insert missing problems and refresh existing ones. Returns (created, updated)."""
     author_hash = hashlib.sha256(f"importer:{SOURCE}".encode()).hexdigest()
-    author = await AuthorRepository(session).upsert(author_hash, AUTHOR_NAME, "sparkboard")
+    author = await AuthorRepository(session).upsert_system(author_hash, AUTHOR_NAME, "sparkboard")
     existing = {
         idea.title: idea
         for idea in (await session.execute(select(Idea).where(Idea.title.is_not(None)))).scalars()

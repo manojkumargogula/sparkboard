@@ -12,7 +12,12 @@ describe("device identity", () => {
   it("round-trips the profile and ignores corrupt data", () => {
     expect(savedProfile()).toBeNull();
     saveProfile({ display_name: "Ada", avatar_seed: "x" });
-    expect(savedProfile()).toEqual({ display_name: "Ada", avatar_seed: "x" });
+    expect(savedProfile()).toEqual({
+      display_name: "Ada",
+      avatar_seed: "x",
+      picture_url: null,
+      signed_in: false,
+    });
     localStorage.setItem("sb-profile", "{not json");
     expect(savedProfile()).toBeNull();
     localStorage.setItem("sb-profile", JSON.stringify({ display_name: "Ada" }));

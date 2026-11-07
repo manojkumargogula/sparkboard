@@ -47,6 +47,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
     throw new ApiError(res.status, detail);
   }
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
@@ -81,6 +82,14 @@ export const api = {
   me: () => request<Profile>("/api/me"),
   saveMe: (profile: Profile) =>
     request<Profile>("/api/me", { method: "PUT", body: JSON.stringify(profile) }),
+  authConfig: () =>
+    request<{ google_client_id: string | null; auth_required: boolean }>("/api/auth/config"),
+  googleSignIn: (credential: string) =>
+    request<Profile>("/api/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    }),
+  logout: () => request<undefined>("/api/auth/logout", { method: "POST" }),
   aiStatus: () => request<{ enabled: boolean; provider: string }>("/api/ai/status"),
   sharpen: (content: string) =>
     request<Sharpened>("/api/ai/sharpen", { method: "POST", body: JSON.stringify({ content }) }),

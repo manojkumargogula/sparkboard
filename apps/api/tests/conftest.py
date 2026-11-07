@@ -53,7 +53,9 @@ async def client(settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
         c.app = app  # type: ignore[attr-defined]
         yield c
     async with app.state.db.engine.begin() as conn:
-        await conn.execute(text("TRUNCATE comments, votes, ideas, authors RESTART IDENTITY"))
+        await conn.execute(
+            text("TRUNCATE comments, votes, ideas, author_devices, authors RESTART IDENTITY")
+        )
     await app.state.db.dispose()
 
 

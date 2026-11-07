@@ -22,18 +22,7 @@ export function Hero() {
     >
       <div className="container-x grid grid-cols-[minmax(0,1fr)] items-center gap-14 pb-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:pb-24">
         <div>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="label inline-flex items-center gap-2 text-fog"
-          >
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-cobalt opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-cobalt" />
-            </span>
-            114 problems worth solving, ranked
-          </motion.p>
-          <h1 className="mt-6 text-mega uppercase">
+          <h1 className="text-mega uppercase">
             {LINES.map((line, i) => (
               <span key={line} className="block overflow-hidden pb-[0.06em]">
                 <motion.span

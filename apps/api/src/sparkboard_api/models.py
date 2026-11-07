@@ -11,6 +11,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -51,6 +52,7 @@ class Idea(Base):
         Index("ix_ideas_created_at", "created_at"),
         Index("ix_ideas_vote_count", "vote_count"),
         Index("ix_ideas_tags", "tags", postgresql_using="gin"),
+        Index("ix_ideas_source_rank", "source", "source_rank"),
         Index(
             "ix_ideas_content_trgm",
             "content",
@@ -73,6 +75,10 @@ class Idea(Base):
     )
     vote_count: Mapped[int] = mapped_column(Integer, server_default="0")
     comment_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    # Provenance for imported ideas: where it came from and its rank/score there.
+    source: Mapped[str | None] = mapped_column(String(40))
+    source_rank: Mapped[int | None] = mapped_column(Integer)
+    source_score: Mapped[float | None] = mapped_column(Float)
 
     author: Mapped[Author | None] = relationship(lazy="joined")
 

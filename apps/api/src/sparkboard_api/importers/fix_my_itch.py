@@ -2,8 +2,8 @@
 
 Usage:  python -m sparkboard_api.importers.fix_my_itch [data/fix-my-itch.json]
 
-Idempotent: an idea whose title already exists is skipped, so the import can
-be re-run safely after the source file is refreshed. Imported ideas start with
+Idempotent: ideas are matched by title, so re-running refreshes ranks and
+scores without duplicating anything. Imported ideas start with
 zero votes; ranking comes from this board's own users.
 """
 
@@ -63,29 +63,44 @@ def load(path: Path) -> list[Problem]:
     ]
 
 
+def ranked(problems: list[Problem]) -> list[tuple[int, Problem]]:
+    """Fix My Itch's own order: the Top 10 as listed, then by Itch Score."""
+    top = [p for p in problems if p.top10]
+    rest = sorted((p for p in problems if not p.top10), key=lambda p: -(p.itch_score or 0))
+    return list(enumerate([*top, *rest], start=1))
+
+
 async def import_problems(session: AsyncSession, problems: list[Problem]) -> tuple[int, int]:
-    """Insert missing problems. Returns (created, skipped)."""
+    """Insert missing problems and refresh provenance on existing ones.
+
+    Returns (created, updated). Votes and comments are never touched.
+    """
     author_hash = hashlib.sha256(f"importer:{SOURCE_TAG}".encode()).hexdigest()
     author = await AuthorRepository(session).upsert(author_hash, AUTHOR_NAME, SOURCE_TAG)
-    existing = set((await session.execute(select(Idea.title))).scalars())
-    created = 0
-    # Highest score first, so newer ids (the "Newest" sort) favour the best problems.
-    ordered = sorted(problems, key=lambda p: (p.top10, p.itch_score or 0))
-    for problem in ordered:
-        if problem.question in existing:
-            continue
-        session.add(
-            Idea(
+    existing = {
+        idea.title: idea
+        for idea in (await session.execute(select(Idea).where(Idea.title.is_not(None)))).scalars()
+    }
+    created = updated = 0
+    for rank, problem in ranked(problems):
+        idea = existing.get(problem.question)
+        if idea is None:
+            idea = Idea(
                 title=problem.question[:120],
                 content=problem.description,
                 tags=problem.tags,
                 author_id=author.id,
             )
-        )
-        existing.add(problem.question)
-        created += 1
+            session.add(idea)
+            existing[problem.question] = idea
+            created += 1
+        else:
+            updated += 1
+        idea.source = SOURCE_TAG
+        idea.source_rank = rank
+        idea.source_score = problem.itch_score
     await session.commit()
-    return created, len(problems) - created
+    return created, updated
 
 
 async def run(path: Path, settings: Settings) -> tuple[int, int]:
@@ -101,7 +116,7 @@ async def run(path: Path, settings: Settings) -> tuple[int, int]:
 def main() -> None:
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_FILE
     created, skipped = asyncio.run(run(path, Settings()))
-    print(f"imported {created} problems, skipped {skipped} already on the board")  # noqa: T201
+    print(f"imported {created} new problems, refreshed {skipped} already on the board")  # noqa: T201
 
 
 if __name__ == "__main__":

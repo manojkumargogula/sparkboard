@@ -18,6 +18,9 @@ export interface Idea {
   vote_count: number;
   comment_count: number;
   author: Author | null;
+  source?: string | null;
+  source_rank?: number | null;
+  source_score?: number | null;
   voted: boolean;
 }
 

@@ -45,6 +45,12 @@ async def test_import_is_idempotent(
     assert await fix_my_itch.run(source, settings) == (2, 0)
     assert await fix_my_itch.run(source, settings) == (0, 2)
 
+    # Equal votes: Fix My Itch's own ranking (Top 10 first) decides the order.
+    top = (await client.get("/api/ideas", params={"sort": "top"})).json()
+    assert [i["source_rank"] for i in top] == [1, 2]
+    assert top[0]["title"] == "Why is parking so hard?"
+    assert top[1]["source_score"] == 71.5
+
     ideas = (await client.get("/api/ideas", params={"sort": "new"})).json()
     plumber = next(i for i in ideas if i["title"] == "Why can't I find a plumber?")
     assert plumber["tags"] == ["home-services", "fix-my-itch"]

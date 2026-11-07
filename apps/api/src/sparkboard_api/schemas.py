@@ -80,6 +80,9 @@ class IdeaOut(BaseModel):
     vote_count: int
     comment_count: int
     author: AuthorOut | None
+    source: str | None = None
+    source_rank: int | None = None
+    source_score: float | None = None
     voted: bool = False
 
 

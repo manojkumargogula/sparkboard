@@ -6,6 +6,7 @@ export type SortOrder = "trending" | "new" | "top";
 export interface Author {
   display_name: string;
   avatar_seed: string;
+  picture_url?: string | null;
 }
 
 export interface Idea {

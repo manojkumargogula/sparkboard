@@ -13,14 +13,19 @@ import { useProfile } from "../profile/useProfile";
 export function Comments({ ideaId }: { ideaId: number }) {
   const { data: comments = [], isPending } = useComments(ideaId);
   const add = useAddComment(ideaId);
-  const { ensureProfile } = useProfile();
+  const { ensureProfile, authRequired } = useProfile();
   const [text, setText] = useState("");
 
   async function submit(e: React.SyntheticEvent) {
     e.preventDefault();
     const content = text.trim();
     if (!content) return;
-    await ensureProfile("Add a name to your comment, or close this to comment anonymously.");
+    const ok = await ensureProfile(
+      authRequired
+        ? "Sign in to join the discussion."
+        : "Add a name to your comment, or close this to comment anonymously.",
+    );
+    if (!ok && authRequired) return;
     add.mutate(content, {
       onSuccess: () => setText(""),
       onError: (err) => toast.error(err.message),

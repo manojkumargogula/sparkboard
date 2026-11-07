@@ -103,9 +103,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={editProfile}
-              aria-label={
-                profile ? `Signed in as ${profile.display_name}. Change name` : "Choose a name"
-              }
+              aria-label={profile ? `Signed in as ${profile.display_name}. Account` : "Sign in"}
               className="grid size-10 place-items-center rounded-full text-snow transition-colors hover:bg-white/10"
             >
               {profile ? <Avatar author={profile} size="sm" /> : <UserRound size={19} />}

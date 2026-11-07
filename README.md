@@ -41,7 +41,7 @@ The brief asked for a list of ideas and a form. Sparkboard keeps that contract e
 - **Idea sheet.** A shareable `/i/:id` side sheet (a bottom sheet on phones) with discussion and native share.
 - **Roadmap.** A four-column board (Open → Planned → Building → Shipped). Status changes are admin-only (`X-Admin-Token`).
 - **Keyboard first.** `N` posts an idea, `/` or `⌘K` opens the command palette (search ideas, jump anywhere).
-- **No sign-up.** Anonymous identity is a random device token. Only its SHA-256 hash is stored. People pick a display name and a generated avatar the first time they vote or post.
+- **Continue with Google.** Posting, voting and commenting need a Google account in production (`AUTH_REQUIRED=true`), so every vote is one real person. The browser gets a Google Identity Services ID token; the API verifies its signature against Google's published keys, its audience, issuer, expiry and verified email (no client secret involved). Each Google account is one author across all your devices. An anonymous profile created before signing in is upgraded in place, so its votes carry over. Reading stays public. Locally, or with `AUTH_REQUIRED=false`, anonymous display names still work, which keeps the brief's plain `curl` contract.
 - **Polish.** Staggered reveals, ticket fan-out, a tag marquee, skeletons, designed empty and error states, reduced-motion support, a PWA manifest, an OG card, and a 390 px-first responsive layout.
 
 **Stack.** React 19 + TypeScript (strict) + Vite + Tailwind v4 + Motion + TanStack Query + Radix + cmdk, set in Host Grotesk / Anton / JetBrains Mono. FastAPI + SQLAlchemy 2 (async) + asyncpg + Alembic + Pydantic v2. PostgreSQL 17.
@@ -175,6 +175,8 @@ When any CI job fails on a PR, the **AI failure explainer** posts the probable c
    | `DATABASE_URL_UNPOOLED` / `PREVIEW_DATABASE_URL_UNPOOLED` | migrations use a direct (non-pooled) connection |
    | `ANTHROPIC_API_KEY` | AI review, planner, health gate, explainer, env config |
    | `VERCEL_AUTOMATION_BYPASS_SECRET` *(optional)* | lets probes reach protected preview URLs |
+
+   Vercel env for sign-in: `GOOGLE_CLIENT_ID` (public OAuth Web client ID) and `AUTH_REQUIRED=true`. Create the client in Google Cloud → Google Auth Platform → Clients → *Web application*, with your site and `http://localhost:5173` as Authorized JavaScript origins (no redirect URIs or secret are needed), and publish the app (basic scopes need no verification).
 
    Repository variable: `PUBLIC_URL=https://ideas.infrenic.com`. Create a GitHub **Environment** called `production` with required reviewers. That is the human approval gate for production.
 4. **Ship.** Merge to `main`, or comment `/deploy preview` / `/deploy production` on a PR.

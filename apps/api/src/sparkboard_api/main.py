@@ -11,9 +11,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from sparkboard_api import __version__
 from sparkboard_api.ai import build_provider
-from sparkboard_api.api.routers import ai, health, ideas, me, meta
+from sparkboard_api.api.routers import ai, auth, health, ideas, me, meta
 from sparkboard_api.core.config import Settings, get_settings
 from sparkboard_api.core.db import Database
+from sparkboard_api.core.google import GoogleVerifier
 from sparkboard_api.core.logging import configure_logging
 from sparkboard_api.core.ratelimit import RateLimiter
 from sparkboard_api.middleware import ObservabilityMiddleware
@@ -40,6 +41,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db = Database(settings)
     app.state.ai = build_provider(settings)
+    app.state.google_verifier = (
+        GoogleVerifier(settings.google_client_id) if settings.google_client_id else None
+    )
     window = settings.rate_limit_window_seconds
     app.state.write_limiter = RateLimiter(settings.rate_limit_writes, window)
     app.state.ai_limiter = RateLimiter(settings.rate_limit_ai, window)
@@ -54,7 +58,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=["X-Next-Offset", "X-Request-Id"],
     )
 
-    for router in (health.router, ideas.router, meta.router, me.router, ai.router):
+    for router in (health.router, ideas.router, meta.router, me.router, auth.router, ai.router):
         app.include_router(router)
     return app
 

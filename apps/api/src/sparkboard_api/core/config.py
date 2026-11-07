@@ -60,6 +60,12 @@ class Settings(BaseSettings):
 
     release: str = "dev"
 
+    # Google sign-in (Google Identity Services ID tokens). Only the public client
+    # ID is needed: tokens are verified against Google's published keys.
+    google_client_id: str | None = None
+    # When true, posting, voting and commenting require a signed-in Google account.
+    auth_required: bool = False
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def async_database_url(self) -> str:

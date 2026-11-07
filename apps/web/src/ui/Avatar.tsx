@@ -22,6 +22,18 @@ export function Avatar({
         .map((p) => p[0]?.toUpperCase() ?? "")
         .join("")
     : "?";
+  if (author?.picture_url) {
+    return (
+      <img
+        src={author.picture_url}
+        alt=""
+        aria-hidden
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        className={clsx("shrink-0 rounded-full object-cover", SIZES[size])}
+      />
+    );
+  }
   return (
     <span
       aria-hidden

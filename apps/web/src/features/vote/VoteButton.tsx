@@ -62,7 +62,7 @@ export function VoteButton({ idea, variant = "box" }: { idea: Idea; variant?: Va
     e.stopPropagation();
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    if (!(await ensureProfile("Pick a name so your votes count once."))) return;
+    if (!(await ensureProfile("Sign in so your vote counts once."))) return;
     const up = !idea.voted;
     if (up) {
       setBurst((n) => n + 1);

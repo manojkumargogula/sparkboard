@@ -65,7 +65,7 @@ describe("AppShell", () => {
   it("lets the visitor choose a name from the header", async () => {
     setup();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Choose a name" }));
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
     await user.type(await screen.findByLabelText("Display name"), "Grace");
     await user.click(screen.getByRole("button", { name: "Save name" }));
     await waitFor(() =>

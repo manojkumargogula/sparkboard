@@ -1,15 +1,38 @@
-/** The spark glyph + wordmark used in the nav. */
+/**
+ * The Sparkboard mark: a vote chevron rising out of a cobalt tile, with a spark
+ * breaking off its tip. "Ideas rise when people vote for them."
+ */
+export function Mark({ size = 24, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      aria-hidden
+      className={className}
+      shapeRendering="geometricPrecision"
+    >
+      <rect width="32" height="32" rx="8" fill="var(--color-cobalt)" />
+      <path
+        d="M8.5 20.5 16 13l7.5 7.5"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M23.4 5.6 24.5 8l2.4 1.1-2.4 1.1-1.1 2.4-1.1-2.4L19.9 9.1l2.4-1.1Z" fill="#fff" />
+    </svg>
+  );
+}
+
+/** Mark + wordmark, used in the nav. */
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 text-[22px] font-bold tracking-[-0.04em] ${className}`}
+      className={`inline-flex items-center gap-2.5 text-[22px] font-bold tracking-[-0.045em] ${className}`}
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
-        <path
-          d="M12 1 14.6 9.4 23 12 14.6 14.6 12 23 9.4 14.6 1 12 9.4 9.4Z"
-          fill="var(--color-cobalt)"
-        />
-      </svg>
+      <Mark size={28} />
       sparkboard
     </span>
   );
@@ -19,19 +42,17 @@ export function Wordmark({ className = "" }: { className?: string }) {
 export function Lockup() {
   return (
     <div
-      className="relative inline-block font-poster leading-[0.82] text-paper uppercase select-none"
+      className="relative inline-flex items-end gap-5 select-none"
       aria-label="Sparkboard by Infrenic"
     >
-      <span className="block text-[clamp(4.5rem,10vw,9rem)]">Spark</span>
-      <span className="block text-[clamp(4.5rem,10vw,9rem)]">
-        B<span className="text-cobalt">✶</span>ard
-      </span>
-      <span className="absolute -top-3 -right-6 rotate-[-8deg] bg-paper px-2 py-0.5 font-sans text-lg font-bold tracking-tight text-night normal-case">
-        the
-      </span>
-      <span className="mt-3 block text-right font-sans text-base font-medium tracking-normal text-fog normal-case">
-        by Infrenic
-      </span>
+      <Mark size={128} className="mb-3 shrink-0 max-sm:size-20" />
+      <div className="font-poster leading-[0.82] text-paper uppercase">
+        <span className="block text-[clamp(4rem,9vw,8rem)]">Spark</span>
+        <span className="block text-[clamp(4rem,9vw,8rem)]">board</span>
+        <span className="mt-3 block text-right font-sans text-base font-medium tracking-normal text-fog normal-case">
+          by Infrenic
+        </span>
+      </div>
     </div>
   );
 }

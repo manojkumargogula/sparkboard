@@ -9,6 +9,8 @@ const PROFILE_KEY = "sb-profile";
 export interface Profile {
   display_name: string;
   avatar_seed: string;
+  picture_url?: string | null;
+  signed_in?: boolean;
 }
 
 function safeGet(key: string): string | null {
@@ -51,14 +53,25 @@ export function savedProfile(): Profile | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<Profile>;
-    return parsed.display_name && parsed.avatar_seed
-      ? { display_name: parsed.display_name, avatar_seed: parsed.avatar_seed }
-      : null;
+    if (!parsed.display_name || !parsed.avatar_seed) return null;
+    return {
+      display_name: parsed.display_name,
+      avatar_seed: parsed.avatar_seed,
+      picture_url: parsed.picture_url ?? null,
+      signed_in: parsed.signed_in ?? false,
+    };
   } catch {
     return null;
   }
 }
 
-export function saveProfile(profile: Profile): void {
-  safeSet(PROFILE_KEY, JSON.stringify(profile));
+export function saveProfile(profile: Profile | null): void {
+  if (profile) safeSet(PROFILE_KEY, JSON.stringify(profile));
+  else {
+    try {
+      localStorage.removeItem(PROFILE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
 }

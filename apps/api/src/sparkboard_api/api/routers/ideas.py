@@ -10,6 +10,7 @@ from sparkboard_api.api.deps import (
     IdeaServiceDep,
     RequiredViewerDep,
     ViewerDep,
+    WriterDep,
     require_admin,
     write_limit,
 )
@@ -66,8 +67,8 @@ async def list_ideas(
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(write_limit)],
 )
-async def create_idea(data: IdeaCreate, service: IdeaServiceDep, viewer: ViewerDep) -> IdeaOut:
-    return await service.create(data, viewer)
+async def create_idea(data: IdeaCreate, service: IdeaServiceDep, writer: WriterDep) -> IdeaOut:
+    return await service.create(data, writer)
 
 
 @router.get("/{idea_id}", response_model=IdeaOut)
@@ -109,10 +110,10 @@ async def list_comments(idea_id: int, service: IdeaServiceDep) -> list[CommentOu
     dependencies=[Depends(write_limit)],
 )
 async def add_comment(
-    idea_id: int, data: CommentCreate, service: IdeaServiceDep, viewer: ViewerDep
+    idea_id: int, data: CommentCreate, service: IdeaServiceDep, writer: WriterDep
 ) -> CommentOut:
     try:
-        return await service.add_comment(idea_id, data.content, viewer)
+        return await service.add_comment(idea_id, data.content, writer)
     except NotFoundError:
         raise _not_found(idea_id) from None
 

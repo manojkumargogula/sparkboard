@@ -58,7 +58,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with: { install_components: gke-gcloud-auth-plugin }
       - if: inputs.cloud == 'k8s-azure'
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}

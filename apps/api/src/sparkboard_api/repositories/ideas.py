@@ -74,10 +74,20 @@ class IdeaRepository:
         match query.sort:
             case SortOrder.NEW:
                 order = (Idea.created_at.desc(), Idea.id.desc())
+            # Votes on this board always win; an imported source rank (e.g.
+            # Fix My Itch's own ranking) only breaks ties between equal votes.
             case SortOrder.TOP:
-                order = (Idea.vote_count.desc(), Idea.created_at.desc())
+                order = (
+                    Idea.vote_count.desc(),
+                    Idea.source_rank.asc().nulls_last(),
+                    Idea.created_at.desc(),
+                )
             case SortOrder.TRENDING:
-                order = (_trending_score().desc(), Idea.id.desc())
+                order = (
+                    _trending_score().desc(),
+                    Idea.source_rank.asc().nulls_last(),
+                    Idea.id.desc(),
+                )
         stmt = stmt.order_by(*order).limit(query.limit).offset(query.offset)
         result = await self._session.execute(stmt)
         return [IdeaRow(idea=row[0], voted=bool(row[1])) for row in result.unique().all()]

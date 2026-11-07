@@ -35,9 +35,9 @@ describe("LandingPage", () => {
       /what should\s*we build\s*next\?/i,
     );
     expect(await screen.findByText("votes cast", { exact: false })).toBeInTheDocument();
-    const top = screen.getByRole("region", { name: /top 10 ideas/i });
+    const top = screen.getByRole("region", { name: /top 10 problems/i });
     expect(await within(top).findByText("CSV export")).toBeInTheDocument();
-    const all = screen.getByRole("region", { name: /all ideas/i });
+    const all = screen.getByRole("region", { name: /fix my itch/i });
     expect(await within(all).findByText("Dark mode")).toBeInTheDocument();
     expect(within(all).getByRole("checkbox", { name: /^ui/i })).toBeInTheDocument();
   });
@@ -45,12 +45,44 @@ describe("LandingPage", () => {
   it("filters by topic and sorts through the URL-backed controls", async () => {
     const calls = board();
     renderApp(routes);
-    const all = screen.getByRole("region", { name: /all ideas/i });
+    const all = screen.getByRole("region", { name: /fix my itch/i });
     await userEvent.click(await within(all).findByRole("checkbox", { name: /^ui/i }));
     await userEvent.click(within(all).getByRole("button", { name: "Newest" }));
     await waitFor(() =>
       expect(calls.some((c) => c.url.includes("tag=ui") && c.url.includes("sort=new"))).toBe(true),
     );
+  });
+
+  it("opens on Fix My Itch and can show everything", async () => {
+    const calls = board();
+    renderApp(routes);
+    const section = screen.getByRole("region", { name: /fix my itch/i });
+    await waitFor(() => expect(calls.some((c) => c.url.includes("tag=fix-my-itch"))).toBe(true));
+    await userEvent.click(within(section).getByRole("checkbox", { name: /everything/i }));
+    expect(await screen.findByRole("region", { name: /all ideas/i })).toBeInTheDocument();
+  });
+
+  it("shows the source score for imported ideas", async () => {
+    board([
+      makeIdea({
+        id: 7,
+        title: "Why is parking hard?",
+        source: "fix-my-itch",
+        source_rank: 3,
+        source_score: null,
+      }),
+      makeIdea({
+        id: 8,
+        title: "Why are invoices slow?",
+        source: "fix-my-itch",
+        source_rank: 12,
+        source_score: 82.8,
+      }),
+    ]);
+    renderApp(routes);
+    const section = screen.getByRole("region", { name: /fix my itch/i });
+    expect(await within(section).findByText("82.8")).toBeInTheDocument();
+    expect(within(section).getByText("Top 10")).toBeInTheDocument();
   });
 
   it("shows an inviting empty state", async () => {
@@ -114,7 +146,7 @@ describe("LandingPage", () => {
     });
     renderApp(routes);
     const user = userEvent.setup();
-    const all = screen.getByRole("region", { name: /all ideas/i });
+    const all = screen.getByRole("region", { name: /fix my itch/i });
     await user.click(await within(all).findByRole("button", { name: /vote for this idea/i }));
     await user.type(await screen.findByLabelText("Display name"), "Grace");
     await user.click(screen.getByRole("button", { name: "Save name" }));

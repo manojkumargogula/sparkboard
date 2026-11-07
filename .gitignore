@@ -31,3 +31,4 @@ crash.log
 .vercel
 .env*
 !.env.example
+*.tmp.mjs

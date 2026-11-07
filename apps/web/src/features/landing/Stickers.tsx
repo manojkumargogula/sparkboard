@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { compact } from "@/lib/format";
 import { useStats, useTags } from "@/lib/queries";
 
+const SOURCE_TAGS = new Set(["fix-my-itch"]);
+
 /** Cut-out shapes. Each is a clip-path, so the text sits on a real silhouette. */
 const SHAPES = {
   triangle: "polygon(50% 0, 100% 100%, 0 100%)",
@@ -36,7 +38,8 @@ function Sticker({ children, className, rotate, delay, shape, ticket }: StickerP
 
 export function Stickers() {
   const stats = useStats().data;
-  const topTag = useTags().data?.[0]?.tag;
+  // Source tags (where ideas came from) are not topics.
+  const topTag = useTags().data?.find((t) => !SOURCE_TAGS.has(t.tag))?.tag;
   const n = (v: number | undefined) => (v === undefined ? "…" : compact(v));
 
   return (

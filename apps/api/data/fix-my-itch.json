@@ -1,0 +1,691 @@
+{
+ "source": "https://razorpay.com/m/fix-my-itch/",
+ "retrieved": "2026-11-07",
+ "note": "Problem statements from Razorpay's Fix My Itch (crowdsourced, AI-curated). Imported with attribution.",
+ "problems": [
+  {
+   "question": "Why can't first time used car buyers verify car histories, conditions and future maintenance costs?",
+   "industry": "Automotive",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why can't renters access verified mold, pests or hazards before signing leases?",
+   "industry": "Housing",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why is caring for aging parents for sole earners across cities still fragmented & stressful?",
+   "industry": "Healthcare",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why do teachers lack real time mental health support at work?",
+   "industry": "Healthcare",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why do STEM students face education loan anxiety from unclear costs in 2026?",
+   "industry": "Career",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why can’t consumers see verified kitchen safety standards on food delivery apps?",
+   "industry": "Consumer Services",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why is connecting specialized hardware to laptops still unreliable and frustrating?",
+   "industry": "Hardware",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why is distinguishing sprains from fractures impossible without costly hospital visits?",
+   "industry": "Healthcare",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why do people leaving formal education lack structure, mentorship and clear career guidance?",
+   "industry": "Career",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why can't anxious people find trustworthy non-prescription sleep solutions easily?",
+   "industry": "Healthcare",
+   "itch_score": null,
+   "top10": true
+  },
+  {
+   "question": "Why do freelancers ghost projects after partial payments without accountability systems?",
+   "industry": "B2B Services",
+   "itch_score": 76,
+   "top10": false
+  },
+  {
+   "question": "Why are small retailers forced into distributor margins without direct brand access?",
+   "industry": "B2B Services",
+   "itch_score": 68.5,
+   "top10": false
+  },
+  {
+   "question": "Why do micro-SMEs waste 10+ hours weekly on invoice management?",
+   "industry": "B2B Services",
+   "itch_score": 67.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t manufacturers rely on guaranteed, accountable pickup logistics for outbound deliveries?",
+   "industry": "B2B Services",
+   "itch_score": 79,
+   "top10": false
+  },
+  {
+   "question": "Why do factory owners wait days for industrial repair technicians?",
+   "industry": "B2B Services",
+   "itch_score": 78.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't shops see real-time supplier stock levels?",
+   "industry": "B2B Services",
+   "itch_score": 67.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t small restaurants access wholesale ingredient pricing without large minimum orders?",
+   "industry": "B2B Services",
+   "itch_score": 71.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't businesses verify new suppliers before purchasing?",
+   "industry": "B2B Services",
+   "itch_score": 76,
+   "top10": false
+  },
+  {
+   "question": "Why can't SMEs negotiate favorable payment terms with large buyers?",
+   "industry": "B2B Services",
+   "itch_score": 82.8,
+   "top10": false
+  },
+  {
+   "question": "Why do businesses struggle finding reliable contract manufacturers for small batches?",
+   "industry": "B2B Services",
+   "itch_score": 75.2,
+   "top10": false
+  },
+  {
+   "question": "Why do makeup artists ignore diverse skin tones?",
+   "industry": "Beauty & Personal Care",
+   "itch_score": 75,
+   "top10": false
+  },
+  {
+   "question": "Why don't salon bookings guarantee your preferred stylist?",
+   "industry": "Beauty & Personal Care",
+   "itch_score": 62,
+   "top10": false
+  },
+  {
+   "question": "Why do skincare products fail in India's humidity and pollution?",
+   "industry": "Beauty & Personal Care",
+   "itch_score": 66.5,
+   "top10": false
+  },
+  {
+   "question": "Why is finding affordable mehendi artists so difficult for small home celebrations?",
+   "industry": "Beauty & Personal Care",
+   "itch_score": 57.3,
+   "top10": false
+  },
+  {
+   "question": "Why do confirmed salon appointments still involve 30-minute waits?",
+   "industry": "Beauty & Personal Care",
+   "itch_score": 66,
+   "top10": false
+  },
+  {
+   "question": "Why can't elderly people find at-home beautician services?",
+   "industry": "Beauty & Personal Care",
+   "itch_score": 75,
+   "top10": false
+  },
+  {
+   "question": "Why do hair color treatments damage hair despite salon promises?",
+   "industry": "Beauty & Personal Care",
+   "itch_score": 69.8,
+   "top10": false
+  },
+  {
+   "question": "Why can’t households easily access digital proof for in-warranty product repairs?",
+   "industry": "Consumer Services",
+   "itch_score": 65.5,
+   "top10": false
+  },
+  {
+   "question": "Why do valet customers lack car parking visibility?",
+   "industry": "Consumer Services",
+   "itch_score": 70,
+   "top10": false
+  },
+  {
+   "question": "Why can’t pet owners find trusted home-stay alternatives to boarding kennels?",
+   "industry": "Consumer Services",
+   "itch_score": 70,
+   "top10": false
+  },
+  {
+   "question": "Why is there no reliable same-day personalized gifting for last-minute occasions?",
+   "industry": "Consumer Services",
+   "itch_score": 65.5,
+   "top10": false
+  },
+  {
+   "question": "Why do drivers circle markets for 20 minutes finding parking?",
+   "industry": "Consumer Services",
+   "itch_score": 81,
+   "top10": false
+  },
+  {
+   "question": "Why is specialized care missing for silk, embroidery and designer clothing?",
+   "industry": "Consumer Services",
+   "itch_score": 69.5,
+   "top10": false
+  },
+  {
+   "question": "Why do appliance technicians overcharge for parts and inspections?",
+   "industry": "Consumer Services",
+   "itch_score": 68.3,
+   "top10": false
+  },
+  {
+   "question": "Why do households lack emergency backup services when domestic help quits suddenly?",
+   "industry": "Consumer Services",
+   "itch_score": 74.3,
+   "top10": false
+  },
+  {
+   "question": "Why can’t citizens quickly find the right animal rescue help during emergencies?",
+   "industry": "Consumer Services",
+   "itch_score": 76,
+   "top10": false
+  },
+  {
+   "question": "Why do shoppers visit stores only to find items unavailable?",
+   "industry": "E-commerce",
+   "itch_score": 83,
+   "top10": false
+  },
+  {
+   "question": "Why do quick-delivery apps send bruised fruits and vegetables?",
+   "industry": "E-commerce",
+   "itch_score": 81,
+   "top10": false
+  },
+  {
+   "question": "Why do small online orders arrive in oversized wasteful packaging?",
+   "industry": "E-commerce",
+   "itch_score": 76.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t working professionals return online purchases outside of business hours?",
+   "industry": "E-commerce",
+   "itch_score": 80,
+   "top10": false
+  },
+  {
+   "question": "Why do hidden shipping fees inflate affordable product prices?",
+   "industry": "E-commerce",
+   "itch_score": 76.5,
+   "top10": false
+  },
+  {
+   "question": "Why do fashion products look different in reality?",
+   "industry": "E-commerce",
+   "itch_score": 79,
+   "top10": false
+  },
+  {
+   "question": "Why can't large families get wholesale grocery pricing online?",
+   "industry": "E-commerce",
+   "itch_score": 75.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t rural residents receive doorstep deliveries despite ordering products online?",
+   "industry": "E-commerce",
+   "itch_score": 80,
+   "top10": false
+  },
+  {
+   "question": "Why do fresh graduates lack practical coding skills despite strong academic performance?",
+   "industry": "EdTech",
+   "itch_score": 86.5,
+   "top10": false
+  },
+  {
+   "question": "Why are college choices influenced by referral fees instead of student aptitude?",
+   "industry": "EdTech",
+   "itch_score": 85.5,
+   "top10": false
+  },
+  {
+   "question": "Why hasn’t tutoring shifted from answer-giving to skill-building learning?",
+   "industry": "EdTech",
+   "itch_score": 78.5,
+   "top10": false
+  },
+  {
+   "question": "Why don’t global learning platforms support high-quality regional language instruction?",
+   "industry": "EdTech",
+   "itch_score": 85.5,
+   "top10": false
+  },
+  {
+   "question": "Why don’t schools provide step-by-step, student-friendly kits for complex assignments?",
+   "industry": "EdTech",
+   "itch_score": 75.5,
+   "top10": false
+  },
+  {
+   "question": "Why do resumes fail ATS filters despite candidates being qualified for roles?",
+   "industry": "EdTech",
+   "itch_score": 76.5,
+   "top10": false
+  },
+  {
+   "question": "Why are mock tests and analytics inaccessible to low-income exam candidates?",
+   "industry": "EdTech",
+   "itch_score": 81.5,
+   "top10": false
+  },
+  {
+   "question": "Why is scholarship information fragmented and inaccessible to low-income and rural students?",
+   "industry": "EdTech",
+   "itch_score": 82,
+   "top10": false
+  },
+  {
+   "question": "Why must students commit to expensive annual subscriptions before testing exam platforms?",
+   "industry": "EdTech",
+   "itch_score": 73.5,
+   "top10": false
+  },
+  {
+   "question": "Why don’t people understand the insurance policies they buy?",
+   "industry": "FinTech",
+   "itch_score": 82,
+   "top10": false
+  },
+  {
+   "question": "Why do families lose track of wedding gift money?",
+   "industry": "FinTech",
+   "itch_score": 73.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t heirs access bank accounts easily after a death?",
+   "industry": "FinTech",
+   "itch_score": 80,
+   "top10": false
+  },
+  {
+   "question": "Why do migrant workers lose money on remittances?",
+   "industry": "FinTech",
+   "itch_score": 82.5,
+   "top10": false
+  },
+  {
+   "question": "Why does investing feel intimidating to ordinary people?",
+   "industry": "FinTech",
+   "itch_score": 81.5,
+   "top10": false
+  },
+  {
+   "question": "Why do people struggle to track where their money goes each month?",
+   "industry": "FinTech",
+   "itch_score": 90.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t hosts prepare restaurant-quality meals at home within 15 minutes?",
+   "industry": "Food & Beverage",
+   "itch_score": 73.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't tiffin subscribers customize daily meals?",
+   "industry": "Food & Beverage",
+   "itch_score": 74.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't consumers track sugar content in packaged snacks?",
+   "industry": "Food & Beverage",
+   "itch_score": 78.5,
+   "top10": false
+  },
+  {
+   "question": "Why do office workers resort to unhealthy afternoon snacks?",
+   "industry": "Food & Beverage",
+   "itch_score": 71,
+   "top10": false
+  },
+  {
+   "question": "Why don't consumers trust pre-ground masala powder quality?",
+   "industry": "Food & Beverage",
+   "itch_score": 72.5,
+   "top10": false
+  },
+  {
+   "question": "Why do diners waste time waiting for restaurant tables?",
+   "industry": "Food & Beverage",
+   "itch_score": 71.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't customers find verified plumbers for emergencies?",
+   "industry": "Home Services",
+   "itch_score": 83,
+   "top10": false
+  },
+  {
+   "question": "Why do AC installation charges vary unpredictably?",
+   "industry": "Home Services",
+   "itch_score": 70.5,
+   "top10": false
+  },
+  {
+   "question": "Why are pest control treatments ineffective within months?",
+   "industry": "Home Services",
+   "itch_score": 73,
+   "top10": false
+  },
+  {
+   "question": "Why do appliance repair shops not provide warranties?",
+   "industry": "Home Services",
+   "itch_score": 72.8,
+   "top10": false
+  },
+  {
+   "question": "Why do home deep cleaning services lack quality standards?",
+   "industry": "Home Services",
+   "itch_score": 60.8,
+   "top10": false
+  },
+  {
+   "question": "Why is booking cargo vehicles harder than passenger transport?",
+   "industry": "Logistics",
+   "itch_score": 92.1,
+   "top10": false
+  },
+  {
+   "question": "Why do factory workers lack affordable first-mile transport to factory jobs?",
+   "industry": "Logistics",
+   "itch_score": 89,
+   "top10": false
+  },
+  {
+   "question": "Why do courier companies lose or damage 5% of packages?",
+   "industry": "Logistics",
+   "itch_score": 75.2,
+   "top10": false
+  },
+  {
+   "question": "Why do regional logistics lack real-time tracking and reliable delivery ETAs?",
+   "industry": "Logistics",
+   "itch_score": 77,
+   "top10": false
+  },
+  {
+   "question": "Why can't businesses compare courier rates easily?",
+   "industry": "Logistics",
+   "itch_score": 70,
+   "top10": false
+  },
+  {
+   "question": "Why can’t reverse logistics be dynamically priced like forward shipping?",
+   "industry": "Logistics",
+   "itch_score": 70.8,
+   "top10": false
+  },
+  {
+   "question": "Why can't small shippers access bulk shipping discounts?",
+   "industry": "Logistics",
+   "itch_score": 71.2,
+   "top10": false
+  },
+  {
+   "question": "Why isn’t fragile-handling monitored with sensors and chain-of-custody tech?",
+   "industry": "Logistics",
+   "itch_score": 68.2,
+   "top10": false
+  },
+  {
+   "question": "Why isn’t subscription pause logic built into auto-debit infrastructure?",
+   "industry": "Payment Issues",
+   "itch_score": 76.2,
+   "top10": false
+  },
+  {
+   "question": "Why can't users redeem credit card reward points easily?",
+   "industry": "Payment Issues",
+   "itch_score": 73.2,
+   "top10": false
+  },
+  {
+   "question": "Why do payment apps have confusing cashback terms?",
+   "industry": "Payment Issues",
+   "itch_score": 81.2,
+   "top10": false
+  },
+  {
+   "question": "Why do apartment maintenance payments lack itemized breakdowns?",
+   "industry": "Payment Issues",
+   "itch_score": 72.2,
+   "top10": false
+  },
+  {
+   "question": "Why is reward visibility missing across UPI and wallet ecosystems?",
+   "industry": "Payment Issues",
+   "itch_score": 77.2,
+   "top10": false
+  },
+  {
+   "question": "Why is foreign transaction pricing still confusing for consumers?",
+   "industry": "Payment Issues",
+   "itch_score": 63.2,
+   "top10": false
+  },
+  {
+   "question": "Why don't homebuyers have standardized neighborhood quality data reports?",
+   "industry": "Real Estate",
+   "itch_score": 94.5,
+   "top10": false
+  },
+  {
+   "question": "Why don’t apartments use QR gates for visitor parking management?",
+   "industry": "Real Estate",
+   "itch_score": 93.5,
+   "top10": false
+  },
+  {
+   "question": "Why don't apartments have smart water sub-meters?",
+   "industry": "Real Estate",
+   "itch_score": 89.5,
+   "top10": false
+  },
+  {
+   "question": "Why are half of rental listings fake broker clickbait?",
+   "industry": "Real Estate",
+   "itch_score": 88.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t NRIs remotely secure vacant properties with real-time monitoring and alerts?",
+   "industry": "Real Estate",
+   "itch_score": 85.8,
+   "top10": false
+  },
+  {
+   "question": "Why are CRM systems too complex for 3-person businesses?",
+   "industry": "SaaS",
+   "itch_score": 74,
+   "top10": false
+  },
+  {
+   "question": "Why can't shop owners create websites without coding knowledge?",
+   "industry": "SaaS",
+   "itch_score": 92.4,
+   "top10": false
+  },
+  {
+   "question": "Why do meetings waste 4 hours daily instead of summaries?",
+   "industry": "SaaS",
+   "itch_score": 64,
+   "top10": false
+  },
+  {
+   "question": "Why don’t parents get real-time visibility when school buses run late?",
+   "industry": "Transportation",
+   "itch_score": 75.6,
+   "top10": false
+  },
+  {
+   "question": "Why aren’t office shuttles dynamically routed based on real-time employee demand?",
+   "industry": "Transportation",
+   "itch_score": 92.1,
+   "top10": false
+  },
+  {
+   "question": "Why hasn’t late-night women’s mobility been solved with tech-enabled safety systems?",
+   "industry": "Transportation",
+   "itch_score": 76.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't EV drivers see real-time charger availability?",
+   "industry": "Transportation",
+   "itch_score": 79.5,
+   "top10": false
+  },
+  {
+   "question": "Why do daily commuters waste 90 minutes in traffic?",
+   "industry": "Transportation",
+   "itch_score": 84.2,
+   "top10": false
+  },
+  {
+   "question": "Why is hotel and café WiFi unreliable for travelers?",
+   "industry": "Travel",
+   "itch_score": 90.5,
+   "top10": false
+  },
+  {
+   "question": "Why isn't there a women-first travel app for solo travellers?",
+   "industry": "Travel",
+   "itch_score": 76,
+   "top10": false
+  },
+  {
+   "question": "Why is it so hard to find power outlets for devices while traveling?",
+   "industry": "Travel",
+   "itch_score": 82.5,
+   "top10": false
+  },
+  {
+   "question": "Why do medicine prices vary wildly across pharmacy chains?",
+   "industry": "Healthtech",
+   "itch_score": 91,
+   "top10": false
+  },
+  {
+   "question": "Why do patients lack tools to compare conflicting diagnoses confidently?",
+   "industry": "Healthtech",
+   "itch_score": 82.5,
+   "top10": false
+  },
+  {
+   "question": "Why do emergency rooms lack systems to prioritize critical patients instantly?",
+   "industry": "Healthtech",
+   "itch_score": 81.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't doctors access patient medical histories across hospitals?",
+   "industry": "Healthtech",
+   "itch_score": 80,
+   "top10": false
+  },
+  {
+   "question": "Why do rural patients waste time traveling for diagnostic tests?",
+   "industry": "Healthtech",
+   "itch_score": 79.5,
+   "top10": false
+  },
+  {
+   "question": "Why are diagnostic services not designed for women’s privacy and mobility needs?",
+   "industry": "Healthtech",
+   "itch_score": 78.5,
+   "top10": false
+  },
+  {
+   "question": "Why is finding specialist doctors in smaller cities hard?",
+   "industry": "Healthtech",
+   "itch_score": 77,
+   "top10": false
+  },
+  {
+   "question": "Why do branded drugs dominate prescriptions despite equivalent, cheaper generic alternatives?",
+   "industry": "Healthtech",
+   "itch_score": 76,
+   "top10": false
+  },
+  {
+   "question": "Why do hospitals hide procedure pricing from patients?",
+   "industry": "Healthtech",
+   "itch_score": 74.5,
+   "top10": false
+  },
+  {
+   "question": "Why can't patients access digital copies of medical records?",
+   "industry": "Healthtech",
+   "itch_score": 73.5,
+   "top10": false
+  },
+  {
+   "question": "Why can’t citizens verify whether segregated waste is actually recycled?",
+   "industry": "Other",
+   "itch_score": 79,
+   "top10": false
+  },
+  {
+   "question": "Why don’t smart water systems detect underground leaks automatically?",
+   "industry": "Other",
+   "itch_score": 78.5,
+   "top10": false
+  },
+  {
+   "question": "Why doesn’t on-demand arborist tech exist for emergency tree risk mitigation?",
+   "industry": "Other",
+   "itch_score": 61.2,
+   "top10": false
+  },
+  {
+   "question": "Why can’t households schedule doorstep e-waste pickup with instant rewards?",
+   "industry": "Other",
+   "itch_score": 71.2,
+   "top10": false
+  }
+ ]
+}

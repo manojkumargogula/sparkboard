@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 
 import { useFeed } from "@/lib/queries";
-import { FIX_MY_ITCH } from "@/lib/source";
+import { CURATED_TAG } from "@/lib/source";
 
 const TICKETS = [
   { bg: "bg-cobalt text-white", rotate: -10, x: -56, y: 34 },
@@ -13,7 +13,7 @@ const TICKETS = [
 
 /** The hero's signature: the three hottest ideas, printed as tickets. */
 export function TicketStack() {
-  const { data } = useFeed({ sort: "top", tag: FIX_MY_ITCH });
+  const { data } = useFeed({ sort: "top", tag: CURATED_TAG });
   const top = (data?.pages[0] ?? []).slice(0, 3).reverse();
 
   return (
@@ -44,7 +44,7 @@ export function TicketStack() {
                 <span className="font-poster text-5xl leading-none">
                   #{String(rank).padStart(2, "0")}
                 </span>
-                <span className="label opacity-70">Fix my itch</span>
+                <span className="label opacity-70">Worth solving</span>
               </div>
               <p className="relative z-10 text-[1.4rem] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[1.7rem]">
                 {idea.title ?? idea.content}

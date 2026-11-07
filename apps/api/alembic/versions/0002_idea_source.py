@@ -1,4 +1,4 @@
-"""Track where an idea came from and its rank/score there (e.g. Fix My Itch).
+"""Track where an idea came from and its rank/score there (curated imports).
 
 Revision ID: 0002
 Revises: 0001

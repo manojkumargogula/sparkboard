@@ -31,7 +31,7 @@ export function Hero() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-cobalt opacity-75" />
               <span className="relative inline-flex size-2 rounded-full bg-cobalt" />
             </span>
-            Now featuring 114 problems from Fix My Itch
+            114 problems worth solving, ranked
           </motion.p>
           <h1 className="mt-6 text-mega uppercase">
             {LINES.map((line, i) => (

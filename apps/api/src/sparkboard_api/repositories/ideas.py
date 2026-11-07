@@ -74,8 +74,8 @@ class IdeaRepository:
         match query.sort:
             case SortOrder.NEW:
                 order = (Idea.created_at.desc(), Idea.id.desc())
-            # Votes on this board always win; an imported source rank (e.g.
-            # Fix My Itch's own ranking) only breaks ties between equal votes.
+            # Votes on this board always win; an imported source rank (the
+            # curated list's own ranking) only breaks ties between equal votes.
             case SortOrder.TOP:
                 order = (
                     Idea.vote_count.desc(),

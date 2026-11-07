@@ -6,7 +6,7 @@ import { Link, useLocation } from "react-router";
 
 import { engagementOf, heatScore, timeAgo } from "@/lib/format";
 import { useFeed, useTags } from "@/lib/queries";
-import { FIX_MY_ITCH, FIX_MY_ITCH_URL, scoreLabel } from "@/lib/source";
+import { CURATED_TAG, scoreLabel } from "@/lib/source";
 import { type IdeaStatus, type SortOrder, STATUSES } from "@/lib/types";
 import { useDebounced } from "@/lib/useDebounced";
 import { Button } from "@/ui/Button";
@@ -61,10 +61,10 @@ export function AllIdeas() {
   const [status, setStatus] = useState<IdeaStatus | undefined>();
   const [query, setQuery] = useState(params.q ?? "");
   const q = useDebounced(query.trim(), 300);
-  // The board opens on Fix My Itch; "all" in the URL shows every idea.
-  const activeTag = params.tag === "all" ? undefined : (params.tag ?? FIX_MY_ITCH);
+  // The board opens on the curated problems; "all" in the URL shows every idea.
+  const activeTag = params.tag === "all" ? undefined : (params.tag ?? CURATED_TAG);
   const setTag = (tag: string | undefined) =>
-    update({ tag: tag === FIX_MY_ITCH ? undefined : (tag ?? "all") });
+    update({ tag: tag === CURATED_TAG ? undefined : (tag ?? "all") });
   const feed = useFeed({ ...params, tag: activeTag, q: q || undefined, status });
   const { data: tags = [] } = useTags();
   const { openComposer } = useComposer();
@@ -74,7 +74,7 @@ export function AllIdeas() {
   const ideas = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
   const maxEngagement = Math.max(0, ...ideas.map(engagementOf));
   const filtered =
-    (activeTag !== undefined && activeTag !== FIX_MY_ITCH) || status !== undefined || q !== "";
+    (activeTag !== undefined && activeTag !== CURATED_TAG) || status !== undefined || q !== "";
 
   const filters = (
     <div className="flex flex-col gap-7">
@@ -103,7 +103,7 @@ export function AllIdeas() {
         {tags.slice(0, 18).map((t) => (
           <FilterOption
             key={t.tag}
-            label={t.tag === FIX_MY_ITCH ? "Fix My Itch" : t.tag.replace(/-/g, " ")}
+            label={t.tag === CURATED_TAG ? "Worth solving" : t.tag.replace(/-/g, " ")}
             count={t.count}
             checked={activeTag === t.tag}
             onChange={() => setTag(activeTag === t.tag ? undefined : t.tag)}
@@ -128,25 +128,12 @@ export function AllIdeas() {
     <section id="all-ideas" className="grid-night py-24 sm:py-28" aria-labelledby="all-ideas-title">
       <div className="container-x">
         <h2 id="all-ideas-title" className="text-center text-giant text-paper uppercase">
-          {activeTag === FIX_MY_ITCH ? "Fix my itch" : "All ideas"}
+          {activeTag === CURATED_TAG ? "Worth solving" : "All ideas"}
         </h2>
         <p className="mx-auto mt-5 max-w-2xl text-center text-lg text-fog">
-          {activeTag === FIX_MY_ITCH ? (
-            <>
-              Problems worth solving, crowdsourced and AI-curated by{" "}
-              <a
-                href={FIX_MY_ITCH_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="text-paper underline decoration-white/30 underline-offset-4 hover:decoration-cobalt"
-              >
-                Razorpay's Fix My Itch
-              </a>
-              , ranked by their Itch Score until your votes say otherwise.
-            </>
-          ) : (
-            "Every idea on the board. Filter by topic, search, or sort by what's rising."
-          )}
+          {activeTag === CURATED_TAG
+            ? "Problems worth solving, ranked by score until your votes say otherwise."
+            : "Every idea on the board. Filter by topic, search, or sort by what's rising."}
         </p>
 
         <div className="mt-14 grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[13rem_minmax(0,1fr)]">
@@ -187,7 +174,7 @@ export function AllIdeas() {
             </div>
 
             <div className="label hidden grid-cols-[minmax(0,1fr)_5rem_4.5rem_9rem_2.5rem] gap-6 border-b border-white/15 py-4 text-fog md:grid">
-              <span>{activeTag === FIX_MY_ITCH ? "Itches" : "Ideas"}</span>
+              <span>{activeTag === CURATED_TAG ? "Problems" : "Ideas"}</span>
               <span>Score</span>
               <span>Votes</span>
               <span>Topic</span>

@@ -27,7 +27,7 @@ export function CtaBand() {
           now
         </motion.h2>
         <div className="text-2xl leading-snug font-medium tracking-tight sm:text-[1.75rem]">
-          <p>Every product is a pile of small itches nobody fixed.</p>
+          <p>Every product is a pile of small problems nobody fixed.</p>
           <p>Sparkboard puts them in one place, ranked by the people who feel them.</p>
           <p className="mt-6">Got one? Put it on the board.</p>
           <Button variant="snow" size="lg" className="mt-9" onClick={openComposer}>

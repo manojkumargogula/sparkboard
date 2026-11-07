@@ -1,4 +1,4 @@
-"""The Fix My Itch importer is idempotent and attributes its source."""
+"""The problems importer is idempotent and keeps the curated ranking."""
 
 from __future__ import annotations
 
@@ -8,20 +8,20 @@ from pathlib import Path
 import httpx
 
 from sparkboard_api.core.config import Settings
-from sparkboard_api.importers import fix_my_itch
+from sparkboard_api.importers import problems
 
 
 def test_bundled_file_loads() -> None:
-    problems = fix_my_itch.load(fix_my_itch.DEFAULT_FILE)
-    assert len(problems) >= 100
-    assert all(p.question.startswith("Why") for p in problems)
-    assert sum(p.top10 for p in problems) == 10
+    items = problems.load(problems.DEFAULT_FILE)
+    assert len(items) >= 100
+    assert all(p.question.startswith("Why") for p in items)
+    assert sum(p.top10 for p in items) == 10
 
 
-async def test_import_is_idempotent(
+async def test_import_is_idempotent_and_ranked(
     client: httpx.AsyncClient, settings: Settings, tmp_path: Path
 ) -> None:
-    source = tmp_path / "itch.json"
+    source = tmp_path / "problems.json"
     source.write_text(
         json.dumps(
             {
@@ -42,20 +42,17 @@ async def test_import_is_idempotent(
             }
         )
     )
-    assert await fix_my_itch.run(source, settings) == (2, 0)
-    assert await fix_my_itch.run(source, settings) == (0, 2)
+    assert await problems.run(source, settings) == (2, 0)
+    assert await problems.run(source, settings) == (0, 2)
 
-    # Equal votes: Fix My Itch's own ranking (Top 10 first) decides the order.
     top = (await client.get("/api/ideas", params={"sort": "top"})).json()
     assert [i["source_rank"] for i in top] == [1, 2]
     assert top[0]["title"] == "Why is parking so hard?"
-    assert top[1]["source_score"] == 71.5
-
-    ideas = (await client.get("/api/ideas", params={"sort": "new"})).json()
-    plumber = next(i for i in ideas if i["title"] == "Why can't I find a plumber?")
-    assert plumber["tags"] == ["home-services", "fix-my-itch"]
-    assert "Itch Score 71.5" in plumber["content"]
-    assert plumber["author"]["display_name"] == "Fix My Itch · Razorpay"
+    plumber = top[1]
+    assert plumber["source_score"] == 71.5
+    assert plumber["tags"] == ["home-services", "worth-solving"]
+    assert (
+        plumber["content"] == "A problem worth solving in Home Services. Vote if you feel it too."
+    )
+    assert plumber["author"]["display_name"] == "Sparkboard"
     assert plumber["vote_count"] == 0
-    parking = next(i for i in ideas if i["title"] == "Why is parking so hard?")
-    assert "Top 10 problem" in parking["content"]

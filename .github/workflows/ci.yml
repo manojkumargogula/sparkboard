@@ -71,7 +71,7 @@ jobs:
         run: |
           uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt \
             | grep -v '^#' | grep -v '^ ' | diff - ../../requirements.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with: { name: api-coverage, path: apps/api/coverage.xml, if-no-files-found: ignore }
 
@@ -135,7 +135,7 @@ jobs:
           npm run e2e
       - if: failure()
         run: docker compose logs --no-color > compose.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with: { name: e2e-report, path: "apps/web/playwright-report\ncompose.log" }
 

@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router";
 
 import { engagementOf, heatScore } from "@/lib/format";
 import { useFeed } from "@/lib/queries";
-import { FIX_MY_ITCH, FIX_MY_ITCH_URL } from "@/lib/source";
+import { CURATED_TAG } from "@/lib/source";
 import type { Idea } from "@/lib/types";
 import { TileSkeleton } from "@/ui/Skeleton";
 
@@ -68,9 +68,9 @@ function Tile({ idea, rank, maxEngagement }: { idea: Idea; rank: number; maxEnga
             </span>
             <span>
               {idea.source_score
-                ? `itch score ${idea.source_score.toFixed(1)}`
+                ? `score ${idea.source_score.toFixed(1)}`
                 : idea.source_rank
-                  ? `fix my itch #${idea.source_rank}`
+                  ? `rank #${idea.source_rank}`
                   : `heat ${heatScore(idea.vote_count, idea.comment_count, maxEngagement).toFixed(1)}`}
             </span>
           </p>
@@ -81,7 +81,7 @@ function Tile({ idea, rank, maxEngagement }: { idea: Idea; rank: number; maxEnga
 }
 
 export function TopTen() {
-  const { data, isPending } = useFeed({ sort: "top", tag: FIX_MY_ITCH });
+  const { data, isPending } = useFeed({ sort: "top", tag: CURATED_TAG });
   const top = (data?.pages[0] ?? []).slice(0, 10);
   const maxEngagement = Math.max(0, ...top.map(engagementOf));
 
@@ -93,16 +93,7 @@ export function TopTen() {
             Top 10 problems
           </h2>
           <p className="max-w-sm pb-2 text-lg text-fog">
-            The itches people most want fixed, curated by{" "}
-            <a
-              href={FIX_MY_ITCH_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-paper underline decoration-white/30 underline-offset-4 hover:decoration-cobalt"
-            >
-              Fix My Itch by Razorpay
-            </a>
-            . Your votes re-rank them.
+            The problems people most want solved. Your votes re-rank them.
           </p>
         </div>
         <ul className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:gap-5">

@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { compact } from "@/lib/format";
 import { useStats, useTags } from "@/lib/queries";
 
-const SOURCE_TAGS = new Set(["fix-my-itch"]);
+const SOURCE_TAGS = new Set(["worth-solving"]);
 
 /** Cut-out shapes. Each is a clip-path, so the text sits on a real silhouette. */
 const SHAPES = {

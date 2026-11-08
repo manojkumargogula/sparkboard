@@ -213,7 +213,12 @@ jobs:
       - name: Terraform validate (every stack)
         run: |
           for stack in aws gcp azure vercel; do
-            terraform -chdir=infra/terraform/stacks/$stack init -backend=false -input=false
+            # Provider downloads occasionally hit registry/GitHub 5xx: retry before failing.
+            for attempt in 1 2 3; do
+              terraform -chdir=infra/terraform/stacks/$stack init -backend=false -input=false && break
+              [ "$attempt" = 3 ] && exit 1
+              sleep 15
+            done
             terraform -chdir=infra/terraform/stacks/$stack validate
           done
       - uses: terraform-linters/setup-tflint@90f302c255ef959cbfb4bd10581afecdb7ece3e6 # v4

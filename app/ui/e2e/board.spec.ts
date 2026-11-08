@@ -14,8 +14,14 @@ test("post an idea, vote on it and comment", async ({ page }) => {
 
   // First write asks for a name.
   await page.getByLabel("Display name").fill("Playwright");
+  const posted = page.waitForResponse(
+    (r) => r.url().endsWith("/api/ideas") && r.request().method() === "POST" && r.ok(),
+  );
   await page.getByRole("button", { name: "Save name" }).click();
+  await posted; // saving the name resumes the post; don't navigate away mid-request
 
+  // The board opens on the curated "Worth solving" set; a new idea shows under "all".
+  await page.goto("/?tag=all#all-ideas");
   const all = page.getByRole("region", { name: /all ideas/i });
   await all.getByRole("button", { name: "Newest" }).click();
   const row = all.locator("li", { hasText: text });

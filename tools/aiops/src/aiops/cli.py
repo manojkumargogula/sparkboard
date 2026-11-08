@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from aiops import github
-from aiops.commands import envgen, explain, health, plan, review, smoke
+from aiops.commands import envgen, health, smoke
 from aiops.llm import LLM
 
 
@@ -16,29 +16,6 @@ def _read(path: str | None) -> str:
     if not path:
         return ""
     return sys.stdin.read() if path == "-" else Path(path).read_text(encoding="utf-8")
-
-
-def cmd_plan(args: argparse.Namespace, llm: LLM) -> int:
-    result = plan.make_plan(args.command, llm, context=_read(args.context))
-    md = plan.render(result)
-    print(md)
-    p = result.plan
-    github.set_output("plan", p.model_dump_json())
-    github.set_output("environment", p.environment.value)
-    github.set_output("target", p.target.value)
-    github.set_output("actions", ",".join(s.action.value for s in p.steps))
-    github.set_output("requires_approval", str(p.requires_approval).lower())
-    github.set_output("comment", md)
-    return 0
-
-
-def cmd_review(args: argparse.Namespace, llm: LLM) -> int:
-    result = review.review(_read(args.diff), llm, ci_summary=_read(args.ci_summary))
-    md = review.render(result)
-    print(md)
-    github.set_output("risk", result.risk)
-    github.set_output("comment", md)
-    return 0
 
 
 def cmd_smoke(args: argparse.Namespace, _llm: LLM) -> int:
@@ -80,26 +57,9 @@ def cmd_envgen(args: argparse.Namespace, llm: LLM) -> int:
     return 0
 
 
-def cmd_explain(args: argparse.Namespace, llm: LLM) -> int:
-    md = explain.render(explain.explain(_read(args.log), llm, job=args.job), job=args.job)
-    print(md)
-    github.set_output("comment", md)
-    return 0
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aiops", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
-
-    p = sub.add_parser("plan", help="ChatOps command → policy-checked deploy plan")
-    p.add_argument("--command", required=True)
-    p.add_argument("--context", help="file with repo context (changed files, branch)")
-    p.set_defaults(fn=cmd_plan)
-
-    r = sub.add_parser("review", help="PR diff → risk-scored review")
-    r.add_argument("--diff", required=True, help="unified diff file or - for stdin")
-    r.add_argument("--ci-summary")
-    r.set_defaults(fn=cmd_review)
 
     s = sub.add_parser("smoke", help="probe a deployment")
     s.add_argument("--url", required=True)
@@ -122,10 +82,6 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--out-dir", default="infra/terraform/environments/generated")
     e.set_defaults(fn=cmd_envgen)
 
-    x = sub.add_parser("explain", help="explain a failed CI log")
-    x.add_argument("--log", required=True)
-    x.add_argument("--job", default="")
-    x.set_defaults(fn=cmd_explain)
     return parser
 
 

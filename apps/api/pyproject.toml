@@ -2,7 +2,6 @@
 name = "sparkboard-api"
 version = "1.0.0"
 description = "Sparkboard REST API: ideas, votes, comments and AI-assisted writing."
-readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi>=0.115,<1",

@@ -85,27 +85,28 @@ resource "random_password" "db" {
 }
 
 resource "aws_db_instance" "this" {
-  identifier                   = var.name
-  engine                       = "postgres"
-  engine_version               = "17"
-  instance_class               = module.size.aws.db
-  allocated_storage            = module.size.db_storage_gb
-  max_allocated_storage        = module.size.db_storage_gb * 4
-  storage_encrypted            = true
-  db_name                      = "sparkboard"
-  username                     = "sparkboard"
-  password                     = random_password.db.result
-  multi_az                     = module.size.db_ha
-  db_subnet_group_name         = module.vpc.database_subnet_group_name
-  vpc_security_group_ids       = [aws_security_group.db.id]
-  publicly_accessible          = false
-  backup_retention_period      = module.size.db_backup_days
-  deletion_protection          = var.environment == "production"
-  skip_final_snapshot          = var.environment != "production"
-  final_snapshot_identifier    = "${var.name}-final"
-  performance_insights_enabled = true
-  auto_minor_version_upgrade   = true
-  tags                         = local.tags
+  identifier                      = var.name
+  engine                          = "postgres"
+  engine_version                  = "17"
+  instance_class                  = module.size.aws.db
+  allocated_storage               = module.size.db_storage_gb
+  max_allocated_storage           = module.size.db_storage_gb * 4
+  storage_encrypted               = true
+  db_name                         = "sparkboard"
+  username                        = "sparkboard"
+  password                        = random_password.db.result
+  multi_az                        = module.size.db_ha
+  db_subnet_group_name            = module.vpc.database_subnet_group_name
+  vpc_security_group_ids          = [aws_security_group.db.id]
+  publicly_accessible             = false
+  backup_retention_period         = module.size.db_backup_days
+  deletion_protection             = var.environment == "production"
+  skip_final_snapshot             = var.environment != "production"
+  final_snapshot_identifier       = "${var.name}-final"
+  enabled_cloudwatch_logs_exports = ["postgresql"]
+  performance_insights_enabled    = true
+  auto_minor_version_upgrade      = true
+  tags                            = local.tags
 }
 
 resource "aws_ecr_repository" "images" {

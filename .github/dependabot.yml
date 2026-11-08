@@ -1,8 +1,30 @@
+# Weekly dependency updates. The 7-day cooldown skips brand-new releases, which
+# limits exposure to compromised packages that get yanked within days.
 version: 2
 updates:
-  - { package-ecosystem: npm, directory: /apps/web, schedule: { interval: weekly }, groups: { web: { patterns: ["*"] } } }
-  - { package-ecosystem: uv, directory: /apps/api, schedule: { interval: weekly }, groups: { api: { patterns: ["*"] } } }
-  - { package-ecosystem: uv, directory: /tools/aiops, schedule: { interval: weekly } }
-  - { package-ecosystem: docker, directory: /docker, schedule: { interval: weekly } }
-  - { package-ecosystem: terraform, directory: /infra/terraform/stacks/aws, schedule: { interval: monthly } }
-  - { package-ecosystem: github-actions, directory: /, schedule: { interval: weekly } }
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    groups: { web: { patterns: ["*"] } }
+  - package-ecosystem: uv
+    directory: /apps/api
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    groups: { api: { patterns: ["*"] } }
+  - package-ecosystem: uv
+    directory: /tools/aiops
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+  - package-ecosystem: docker
+    directory: /infra/docker
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+  - package-ecosystem: terraform
+    directory: /infra/terraform/stacks/aws
+    schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }

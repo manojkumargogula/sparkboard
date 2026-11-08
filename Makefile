@@ -49,6 +49,10 @@ e2e: ## Playwright against the running stack (`make up` first)
 
 check: lint test ## lint + test
 
+requirements: ## Regenerate requirements.txt for Vercel (run after changing API dependencies)
+	cd $(API) && uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt \
+	  | grep -v '^#' | grep -v '^ ' > ../../requirements.txt
+
 tf-validate: ## Check every Terraform stack (no cloud credentials needed)
 	for stack in aws gcp azure vercel; do \
 	  terraform -chdir=infra/terraform/stacks/$$stack init -backend=false && \
@@ -61,4 +65,4 @@ envgen: ## Regenerate environment configs from infra/terraform/environments/*.in
 	    --policy ../../infra/terraform/environments/policy.yaml --out-dir ../../infra/terraform/environments/generated; \
 	done
 
-.PHONY: help install up down dev lint test-db test e2e check tf-validate envgen
+.PHONY: help install up down dev lint test-db test e2e check requirements tf-validate envgen

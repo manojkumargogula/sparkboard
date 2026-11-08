@@ -115,7 +115,7 @@ def _client_key(request: Request, digest: str | None) -> str:
         return f"d:{digest}"
     forwarded = request.headers.get("x-forwarded-for", "")
     ip = forwarded.split(",")[0].strip() or (request.client.host if request.client else "?")
-    return f"ip:{ip}"
+    return f"ip:{ip}"  # nosemgrep: directly-returned-format-string (rate-limit key, never HTML)
 
 
 def _enforce(limiter: RateLimiter, key: str) -> None:

@@ -41,7 +41,7 @@ declare global {
 const SRC = "https://accounts.google.com/gsi/client";
 let loading: Promise<GoogleId> | null = null;
 
-export function loadGoogle(): Promise<GoogleId> {
+function loadGoogle(): Promise<GoogleId> {
   if (window.google?.accounts.id) return Promise.resolve(window.google.accounts.id);
   loading ??= new Promise<GoogleId>((resolve, reject) => {
     const script = document.createElement("script");

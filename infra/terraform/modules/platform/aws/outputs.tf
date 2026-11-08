@@ -1,4 +1,4 @@
-# Platform contract (see infra/terraform/README.md). Identical names on every cloud.
+# Platform contract (see docs/deployment.md). Identical names on every cloud.
 
 output "cluster_name" { value = module.eks.cluster_name }
 output "kube_host" { value = module.eks.cluster_endpoint }

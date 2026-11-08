@@ -33,7 +33,7 @@ lint: ## Every static check CI runs
 	cd $(AIOPS) && uv run ruff check . && uv run ruff format --check . && uv run mypy
 	cd $(WEB) && npm run lint && npm run format:check && npm run typecheck
 	terraform fmt -check -recursive infra/terraform
-	helm lint infra/helm/sparkboard -f infra/helm/sparkboard/values/kind.yaml
+	helm lint infra/helm/sparkboard -f infra/helm/sparkboard/values/aws.yaml --set secrets.databaseUrl=postgresql://ci@db/ci
 
 test-db: ## Throwaway Postgres for API tests on :5433
 	docker run -d --rm --name sparkboard-testdb -e POSTGRES_USER=sparkboard -e POSTGRES_PASSWORD=sparkboard \
@@ -55,16 +55,10 @@ tf-validate: ## Check every Terraform stack (no cloud credentials needed)
 	  terraform -chdir=infra/terraform/stacks/$$stack validate || exit 1; \
 	done
 
-kind-up: ## Deploy the Helm chart to a local kind cluster (http://localhost:8088)
-	infra/kind/up.sh
-
-kind-down: ## Delete the kind cluster
-	infra/kind/down.sh
-
 envgen: ## Regenerate environment configs from infra/environments/*.intent.yaml
 	cd $(AIOPS) && for env in staging production; do \
 	  uv run aiops envgen --intent ../../infra/environments/$$env.intent.yaml \
 	    --policy ../../infra/environments/policy.yaml --out-dir ../../infra/environments/generated; \
 	done
 
-.PHONY: help install up down dev lint test-db test e2e check tf-validate kind-up kind-down envgen
+.PHONY: help install up down dev lint test-db test e2e check tf-validate envgen

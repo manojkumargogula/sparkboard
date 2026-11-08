@@ -36,7 +36,7 @@ jobs:
             api: ['apps/api/**', 'infra/docker/api.Dockerfile', 'requirements.txt']
             web: ['apps/web/**', 'infra/docker/web.Dockerfile', 'infra/docker/nginx.conf']
             aiops: ['tools/aiops/**']
-            iac: ['infra/terraform/**', 'infra/helm/**', 'infra/kind/**', 'infra/environments/**']
+            iac: ['infra/terraform/**', 'infra/helm/**', 'infra/environments/**']
 
   api:
     needs: changes
@@ -213,11 +213,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
       - name: helm lint
-        run: helm lint infra/helm/sparkboard -f infra/helm/sparkboard/values/kind.yaml
+        run: helm lint infra/helm/sparkboard -f infra/helm/sparkboard/values/aws.yaml --set secrets.databaseUrl=postgresql://ci@db/ci
       - name: Render every cloud and validate against Kubernetes schemas
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
-          for v in kind aws gcp azure; do
+          for v in aws gcp azure; do
             helm template sb infra/helm/sparkboard -f infra/helm/sparkboard/values/$v.yaml \
               --set secrets.databaseUrl=postgresql://ci@db/ci \
               | ./kubeconform -strict -summary -kubernetes-version 1.33.0

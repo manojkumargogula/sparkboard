@@ -9,7 +9,7 @@ It is also a reference platform. The same app ships through an AI-assisted deliv
 |---|---|
 | **Live** | **https://ideas.infrenic.com** (Vercel + Neon Postgres) |
 | **API docs** | https://ideas.infrenic.com/api/docs |
-| **Kubernetes** | Helm chart proven on `kind` (`make kind-up`). EKS / GKE / AKS roots are validated but not applied; see [Deployments](#deployments). |
+| **Kubernetes** | One Helm chart for EKS / GKE / AKS. Terraform stacks are validated but not applied; see [Deployments](#deployments). |
 
 ---
 
@@ -61,7 +61,7 @@ flowchart LR
     FN --> NEON[(Neon Postgres<br/>pooled)]
   end
 
-  subgraph K8s["Target B · any Kubernetes (EKS / GKE / AKS / kind)"]
+  subgraph K8s["Target B · any Kubernetes (EKS / GKE / AKS)"]
     ING[Ingress] --> WEB[web pods<br/>nginx + SPA]
     WEB -->|/api| API[api pods<br/>FastAPI]
     API --> PG[(Managed Postgres<br/>RDS / Cloud SQL / Flexible)]
@@ -80,7 +80,6 @@ docker-compose.yml   local stack: db → api (runs migrations first) → web
 infra/               everything that builds, ships or provisions the app (see infra/README.md)
   docker/            api + web Dockerfiles (multi-stage, non-root), nginx template
   helm/sparkboard/   one chart for every cluster; values/<cloud>.yaml holds the small differences
-  kind/              local Kubernetes proof (kind + ingress-nginx)
   terraform/         modules (sizing · platform/{aws,gcp,azure} · app · vercel) + thin stacks/<target> roots
   environments/      plain-language environment intents + guardrail policy + generated configs
 tools/aiops/         the AI delivery toolkit used by the workflows (typed, tested, policy-guarded)
@@ -122,13 +121,6 @@ make install
 make dev            # Postgres in Docker, API on :8000 with --reload, Vite on :5173 proxying /api
 ```
 
-### Kubernetes on your laptop
-
-```bash
-make kind-up        # kind cluster + ingress-nginx + the Helm chart → http://localhost:8088
-make kind-down
-```
-
 ---
 
 ## Quality gates
@@ -143,7 +135,7 @@ make kind-down
 | aiops | `ruff`, `mypy --strict`, `pytest` (96 % coverage) including adversarial "the model overreaches" cases |
 | Containers | `hadolint`, buildx with GHA cache, **Trivy** image scan (fails on fixable HIGH/CRITICAL) |
 | IaC | `terraform fmt` + `validate` for all four roots, `tflint`, Trivy misconfiguration scan |
-| Helm | `helm lint`, render for kind/aws/gcp/azure, `kubeconform -strict` against Kubernetes 1.33 schemas |
+| Helm | `helm lint`, render for aws/gcp/azure, `kubeconform -strict` against Kubernetes 1.33 schemas |
 | Repo | `actionlint` (+ shellcheck), `gitleaks`, CodeQL (Python, TS, Actions), Dependabot, pre-commit hooks mirroring CI |
 
 When any CI job fails on a PR, the **AI failure explainer** posts the probable cause and a fix as a sticky comment (see [AI integration](#ai-integration)).
@@ -299,7 +291,6 @@ image_tag  = "3f2c1ab"
 | Target | Status | URL |
 |---|---|---|
 | **Vercel + Neon** | Live, deployed by `deploy-vercel.yml` | **https://ideas.infrenic.com** |
-| **Kubernetes on kind** | Verified locally: install, migration hook, ingress, upgrade + `helm rollback` | `make kind-up` → http://localhost:8088 |
 | EKS / GKE / AKS | Terraform + workflow written and `validate`d; not applied (no cloud spend for this project) | `terraform apply` in `infra/terraform/stacks/<cloud>` |
 
 ---
@@ -320,7 +311,7 @@ image_tag  = "3f2c1ab"
 - **Rate limiting is per instance** (in-process). That is fine for one replica or one serverless instance. At scale it should move to the edge (Vercel Firewall / ingress) or Redis.
 - **Migrations run before traffic shifts**, so they must be backward compatible (expand → deploy → contract). The PR template asks for this, and the AI review flags migrations as high risk.
 - **Polling, not websockets**, for "new ideas". It is simpler and works on serverless. SSE would be the next step.
-- **The K8s targets are not applied.** Running three managed clusters for a demo costs real money each month. The chart is proven on kind, and the Terraform is validated in CI.
+- **The K8s targets are not applied.** Running three managed clusters for a demo costs real money each month. The chart is linted and schema-checked for each cloud, and the Terraform is validated in CI.
 - **Next:** the "follow an idea" email digest, moderation tools (merge duplicates), and OpenTelemetry traces feeding the health gate.
 
 ---

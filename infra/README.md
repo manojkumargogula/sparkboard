@@ -12,9 +12,8 @@ infra/
     nginx.conf            serves the app, proxies /api, security headers
   helm/sparkboard/        one chart for every Kubernetes target
     values.yaml           cloud-neutral defaults
-    values/<target>.yaml  small per-target overlays: aws · gcp · azure · kind
+    values/<target>.yaml  small per-target overlays: aws · gcp · azure
     templates/            api · web · HPA · ingress · migration job · network policy
-  kind/                   local Kubernetes proof: `make kind-up` / `make kind-down`
   terraform/              see terraform/README.md
     modules/              sizing · platform/{aws,gcp,azure} · app · vercel
     stacks/<target>/      thin deployable roots: aws · gcp · azure · vercel

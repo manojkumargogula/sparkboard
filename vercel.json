@@ -4,13 +4,13 @@
   "regions": [
     "fra1"
   ],
-  "installCommand": "npm ci --prefix apps/web --no-audit --no-fund",
-  "buildCommand": "npm run build --prefix apps/web",
-  "outputDirectory": "apps/web/dist",
+  "installCommand": "npm ci --prefix app/ui --no-audit --no-fund",
+  "buildCommand": "npm run build --prefix app/ui",
+  "outputDirectory": "app/ui/dist",
   "functions": {
     "api/index.py": {
       "maxDuration": 30,
-      "includeFiles": "apps/api/src/**"
+      "includeFiles": "app/backend/src/**"
     }
   },
   "rewrites": [

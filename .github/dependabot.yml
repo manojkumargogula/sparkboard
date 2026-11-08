@@ -3,12 +3,12 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /apps/web
+    directory: /app/ui
     schedule: { interval: weekly }
     cooldown: { default-days: 7 }
     groups: { web: { patterns: ["*"] } }
   - package-ecosystem: uv
-    directory: /apps/api
+    directory: /app/backend
     schedule: { interval: weekly }
     cooldown: { default-days: 7 }
     groups: { api: { patterns: ["*"] } }

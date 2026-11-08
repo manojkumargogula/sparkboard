@@ -48,6 +48,6 @@ Current reviewed suppressions:
 | Where | Rule | Why |
 |---|---|---|
 | `infra/docker/nginx.conf` | nginx `missing-internal` | `/api/` is a public reverse proxy to a fixed upstream; `internal` would make it unreachable |
-| `apps/api/.../api/deps.py` | `directly-returned-format-string` | the string is a rate-limit key, never rendered as HTML |
+| `app/backend/.../api/deps.py` | `directly-returned-format-string` | the string is a rate-limit key, never rendered as HTML |
 | `infra/terraform/modules/platform/gcp` | Cloud SQL client certificates (Semgrep + `AVD-GCP-0015`) | TLS is already required (`ENCRYPTED_ONLY`); the app authenticates with a password over TLS |
 | `infra/.trivyignore` | `AVD-AWS-0040`, `AVD-AWS-0104` | EKS endpoint is CIDR-restricted; worker egress is required to reach ECR/STS |

@@ -43,10 +43,10 @@ make dev        # Postgres in Docker, API on :8000 with --reload, Vite on :5173 
 
 ## Database migrations
 
-Migrations live in `apps/api/alembic/versions`. Create one with:
+Migrations live in `app/backend/alembic/versions`. Create one with:
 
 ```bash
-cd apps/api && uv run alembic revision -m "describe the change"
+cd app/backend && uv run alembic revision -m "describe the change"
 ```
 
 They run before new code takes traffic, so they must be backward compatible (expand → deploy → contract).

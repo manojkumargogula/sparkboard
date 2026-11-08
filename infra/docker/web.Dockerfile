@@ -1,9 +1,9 @@
 # Build: compile the React app into /app/dist
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY apps/web/package.json apps/web/package-lock.json ./
+COPY app/ui/package.json app/ui/package-lock.json ./
 RUN npm ci
-COPY apps/web ./
+COPY app/ui ./
 RUN npm run build
 
 # Run: serve it with nginx (which also proxies /api to the API)

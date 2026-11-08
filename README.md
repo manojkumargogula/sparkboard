@@ -23,9 +23,9 @@ make down
 ## Repository layout
 
 ```
-apps/
-  api/                FastAPI service (routers → services → repositories → models)
-  web/                React SPA (features/, ui/, lib/)
+app/
+  backend/            FastAPI service (routers → services → repositories → models)
+  ui/                 React SPA (features/, ui/, lib/)
 tools/aiops/          deploy health gate + AI environment sizing (deploy-vercel.yml, make envgen)
 infra/
   docker/             Dockerfiles + nginx.conf

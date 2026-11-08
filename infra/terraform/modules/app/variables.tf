@@ -10,7 +10,7 @@ variable "release_name" {
 
 variable "cloud" {
   type        = string
-  description = "aws | gcp | azure; selects deploy/helm/sparkboard/values-<cloud>.yaml."
+  description = "aws | gcp | azure; selects infra/helm/sparkboard/values/<cloud>.yaml."
 }
 
 variable "image_registry" {

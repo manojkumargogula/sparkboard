@@ -35,7 +35,7 @@ jobs:
     concurrency: k8s-${{ inputs.cloud }}-${{ inputs.environment }}
     env:
       CLOUD: ${{ inputs.cloud }}
-      ROOT: infra/terraform/live/${{ inputs.cloud == 'k8s-aws' && 'aws' || inputs.cloud == 'k8s-gcp' && 'gcp' || 'azure' }}
+      ROOT: infra/terraform/stacks/${{ inputs.cloud == 'k8s-aws' && 'aws' || inputs.cloud == 'k8s-gcp' && 'gcp' || 'azure' }}
       TAG: ${{ inputs.ref || github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -92,7 +92,7 @@ jobs:
         if: ${{ !inputs.rollback }}
         run: |
           for image in api web; do
-            docker build -t "${{ steps.platform.outputs.registry }}/sparkboard-$image:$TAG" -f docker/$image.Dockerfile .
+            docker build -t "${{ steps.platform.outputs.registry }}/sparkboard-$image:$TAG" -f infra/docker/$image.Dockerfile .
             docker push "${{ steps.platform.outputs.registry }}/sparkboard-$image:$TAG"
           done
 
@@ -103,9 +103,9 @@ jobs:
           TF_VAR_image_tag: ${{ env.TAG }}
           TF_VAR_ai_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
-        # environments/generated/<env>.tfvars is written by the AI env-config workflow (and reviewed in a PR).
+        # infra/environments/generated/<env>.tfvars is written by the AI env-config workflow (and reviewed in a PR).
         run: |
-          varfile="../../../../environments/generated/${{ inputs.environment }}.tfvars"
+          varfile="../../../environments/generated/${{ inputs.environment }}.tfvars"
           if [ -f "$varfile" ]; then
             terraform apply -input=false -auto-approve -var-file="$varfile"
           else

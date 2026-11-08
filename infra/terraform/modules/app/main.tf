@@ -44,7 +44,7 @@ resource "helm_release" "app" {
   max_history     = 10
 
   values = concat(
-    [file("${local.chart_dir}/values-${var.cloud}.yaml")],
+    [file("${local.chart_dir}/values/${var.cloud}.yaml")],
     [yamlencode({
       image          = { registry = var.image_registry, tag = var.image_tag }
       secrets        = { existingSecret = kubernetes_secret_v1.app.metadata[0].name }

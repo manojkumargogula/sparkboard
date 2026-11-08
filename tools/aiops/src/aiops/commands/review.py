@@ -43,7 +43,7 @@ RISK_RULES: list[tuple[str, Risk, str]] = [
     (r"^apps/api/alembic/versions/", Risk.HIGH, "database migration"),
     (r"^infra/terraform/", Risk.HIGH, "infrastructure change"),
     (r"^\.github/workflows/", Risk.MEDIUM, "pipeline change"),
-    (r"^deploy/helm/", Risk.MEDIUM, "deployment manifest change"),
+    (r"^infra/helm/", Risk.MEDIUM, "deployment manifest change"),
     (r"core/(security|config)\.py$", Risk.MEDIUM, "security or config code"),
     (r"(^|/)(requirements\.txt|uv\.lock|package-lock\.json)$", Risk.MEDIUM, "dependency change"),
 ]

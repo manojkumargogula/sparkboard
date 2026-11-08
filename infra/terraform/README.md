@@ -6,9 +6,9 @@ modules/
   platform/aws       VPC + EKS + RDS Postgres + ECR      ┐ all expose the SAME outputs
   platform/gcp       VPC + GKE Autopilot + Cloud SQL + AR ├ (see "Platform contract")
   platform/azure     VNet + AKS + PG Flexible + ACR      ┘
-  app/               cloud-neutral: namespace + secret + Helm release of deploy/helm/sparkboard
+  app/               cloud-neutral: namespace + secret + Helm release of infra/helm/sparkboard
   vercel/            Vercel project + env + domain, Neon Postgres (the live deployment)
-live/<target>/       thin roots: provider auth + platform + app. Only tfvars differ.
+stacks/<target>/     thin roots: provider auth + platform + app. Only tfvars differ.
 ```
 
 ## Platform contract
@@ -26,12 +26,12 @@ and returns:
 | `service_account_annotations` | workload identity binding for the app's pods |
 
 `modules/app` consumes only those outputs, so adding a fourth cloud means writing one
-`modules/platform/<cloud>` that satisfies the contract plus a ~60-line `live/<cloud>` root.
+`modules/platform/<cloud>` that satisfies the contract plus a ~60-line `stacks/<cloud>` root.
 
 ## Usage
 
 ```bash
-cd live/gcp
+cd stacks/gcp
 cp example.tfvars terraform.tfvars        # project_id, region, size
 terraform init && terraform plan
 ```

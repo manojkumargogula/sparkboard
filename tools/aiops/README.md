@@ -12,10 +12,10 @@ AI-assisted delivery tooling used by `.github/workflows`. Every command:
 | `aiops review` | `ai-review.yml` | PR diff → findings + risk label (policy floor can't be lowered) |
 | `aiops smoke` | deploy workflows | read-only probes → latency/error JSON |
 | `aiops health` | deploy workflows | SLOs + AI log/metric read → promote or rollback |
-| `aiops envgen` | `ai-env-config.yml` | `environments/*.intent.yaml` → tfvars + Helm values PR |
+| `aiops envgen` | `ai-env-config.yml` | `infra/environments/*.intent.yaml` → tfvars + Helm values PR |
 | `aiops explain` | `ci.yml` | failed job log → probable cause + fix comment |
 
 ```bash
 uv sync && uv run aiops plan --command "/deploy production on aws"
-ANTHROPIC_API_KEY=... uv run aiops envgen --intent ../../environments/staging.intent.yaml
+ANTHROPIC_API_KEY=... uv run aiops envgen --intent ../../infra/environments/staging.intent.yaml
 ```

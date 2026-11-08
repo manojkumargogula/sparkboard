@@ -34,7 +34,7 @@ lint: ## Every static check CI runs
 	cd $(AIOPS) && uv run ruff check . && uv run ruff format --check . && uv run mypy
 	cd $(WEB) && npm run lint && npm run format:check && npm run typecheck
 	terraform fmt -check -recursive infra/terraform
-	helm lint deploy/helm/sparkboard -f deploy/helm/sparkboard/values-kind.yaml
+	helm lint infra/helm/sparkboard -f infra/helm/sparkboard/values/kind.yaml
 
 test-db: ## Throwaway Postgres for API tests on :5433
 	docker run -d --rm --name sparkboard-testdb -e POSTGRES_USER=sparkboard -e POSTGRES_PASSWORD=sparkboard \
@@ -51,17 +51,17 @@ e2e: ## Playwright against the running stack (`make up` first)
 check: lint test ## lint + test
 
 tf-validate: ## terraform init/validate every root (no cloud credentials needed)
-	@for r in $(TF_ROOTS); do echo "› $$r"; (cd infra/terraform/live/$$r && terraform init -backend=false -input=false >/dev/null && terraform validate) || exit 1; done
+	@for r in $(TF_ROOTS); do echo "› $$r"; (cd infra/terraform/stacks/$$r && terraform init -backend=false -input=false >/dev/null && terraform validate) || exit 1; done
 
 kind-up: ## Deploy the Helm chart to a local kind cluster (http://localhost:8088)
-	./deploy/kind/up.sh
+	infra/kind/up.sh
 
 kind-down: ## Delete the kind cluster
-	./deploy/kind/down.sh
+	infra/kind/down.sh
 
-envgen: ## Regenerate environment configs from environments/*.intent.yaml
-	@for f in environments/*.intent.yaml; do \
-	  (cd $(AIOPS) && uv run aiops envgen --intent ../../$$f --policy ../../environments/policy.yaml --out-dir ../../environments/generated); \
+envgen: ## Regenerate environment configs from infra/environments/*.intent.yaml
+	@for f in infra/environments/*.intent.yaml; do \
+	  (cd $(AIOPS) && uv run aiops envgen --intent ../../$$f --policy ../../infra/environments/policy.yaml --out-dir ../../infra/environments/generated); \
 	done
 
 .PHONY: help install up down dev lint test-db test e2e check tf-validate kind-up kind-down envgen

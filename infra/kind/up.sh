@@ -9,25 +9,25 @@ NS=sparkboard
 CTX="kind-${CLUSTER}"
 k() { kubectl --context "$CTX" "$@"; }
 
-kind get clusters | grep -qx "$CLUSTER" || kind create cluster --config deploy/kind/cluster.yaml
+kind get clusters | grep -qx "$CLUSTER" || kind create cluster --config infra/kind/cluster.yaml
 
 echo "› ingress-nginx"
 k apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml >/dev/null
 k -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeout=180s
 
 echo "› images"
-docker build -q -t sparkboard-api:local -f docker/api.Dockerfile . >/dev/null
-docker build -q -t sparkboard-web:local -f docker/web.Dockerfile . >/dev/null
+docker build -q -t sparkboard-api:local -f infra/docker/api.Dockerfile . >/dev/null
+docker build -q -t sparkboard-web:local -f infra/docker/web.Dockerfile . >/dev/null
 kind load docker-image sparkboard-api:local sparkboard-web:local --name "$CLUSTER"
 
 echo "› postgres"
 k create namespace "$NS" --dry-run=client -o yaml | k apply -f - >/dev/null
-k -n "$NS" apply -f deploy/kind/postgres.yaml >/dev/null
+k -n "$NS" apply -f infra/kind/postgres.yaml >/dev/null
 k -n "$NS" rollout status statefulset/postgres --timeout=120s
 
 echo "› helm"
-helm --kube-context "$CTX" upgrade --install sparkboard deploy/helm/sparkboard \
-  -n "$NS" -f deploy/helm/sparkboard/values-kind.yaml --wait --timeout 5m
+helm --kube-context "$CTX" upgrade --install sparkboard infra/helm/sparkboard \
+  -n "$NS" -f infra/helm/sparkboard/values/kind.yaml --wait --timeout 5m
 
 echo "› smoke"
 for i in $(seq 1 30); do

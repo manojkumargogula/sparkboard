@@ -11,8 +11,10 @@
 .git
 .github
 .shots
-infra
-deploy
+infra/terraform
+infra/helm
+infra/kind
+infra/environments
 docs
 **/.env
 **/.env.*

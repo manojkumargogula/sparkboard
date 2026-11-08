@@ -76,13 +76,14 @@ flowchart LR
 apps/api/            FastAPI service: routers → services → repositories → models (one layer = one job)
 apps/web/            React SPA: features/{feed,composer,vote,idea,roadmap,palette,profile}, ui/, lib/
 api/index.py         Vercel entry point (re-exports the FastAPI app)
-docker/              api + web Dockerfiles (multi-stage, non-root), nginx template
 docker-compose.yml   local stack: db → migrate → api → web (+ optional seed)
-deploy/helm/         one chart for every cluster; values-<cloud>.yaml holds the small differences
-deploy/kind/         local Kubernetes proof (kind + ingress-nginx)
-infra/terraform/     sizing · platform/{aws,gcp,azure} · app · vercel modules + thin live roots
+infra/               everything that builds, ships or provisions the app (see infra/README.md)
+  docker/            api + web Dockerfiles (multi-stage, non-root), nginx template
+  helm/sparkboard/   one chart for every cluster; values/<cloud>.yaml holds the small differences
+  kind/              local Kubernetes proof (kind + ingress-nginx)
+  terraform/         modules (sizing · platform/{aws,gcp,azure} · app · vercel) + thin stacks/<target> roots
+  environments/      plain-language environment intents + guardrail policy + generated configs
 tools/aiops/         the AI delivery toolkit used by the workflows (typed, tested, policy-guarded)
-environments/        plain-language environment intents + guardrail policy + generated configs
 .github/workflows/   ci · ai-review · chatops · deploy-vercel · deploy-k8s · ai-env-config · codeql
 ```
 
@@ -160,12 +161,12 @@ When any CI job fails on a PR, the **AI failure explainer** posts the probable c
 | `chatops.yml` | PR comment `/deploy`, `/rollback`, `/plan` | AI plans, policy corrects, then calls the deploy workflow |
 | `deploy-vercel.yml` | push to `main`, dispatch, ChatOps | CI → migrate → deploy without moving the domain → probe → AI health gate → promote or block + incident |
 | `deploy-k8s.yml` | dispatch, ChatOps | OIDC login → build/push → `terraform apply` (atomic Helm) → probe → AI health gate → `helm rollback` |
-| `ai-env-config.yml` | change to `environments/*.intent.yaml` | intent → AI sizing → policy clamp → tfvars + Helm values PR |
+| `ai-env-config.yml` | change to `infra/environments/*.intent.yaml` | intent → AI sizing → policy clamp → tfvars + Helm values PR |
 | `codeql.yml` | PR, push, weekly | static security analysis |
 
 ### Deploy to Vercel (the live target)
 
-1. **Create the project and database.** Either apply `infra/terraform/live/vercel` (`VERCEL_API_TOKEN` + `NEON_API_KEY` in the env), or do it by hand: `vercel link`, then add Neon Postgres from the Vercel Marketplace.
+1. **Create the project and database.** Either apply `infra/terraform/stacks/vercel` (`VERCEL_API_TOKEN` + `NEON_API_KEY` in the env), or do it by hand: `vercel link`, then add Neon Postgres from the Vercel Marketplace.
 2. **Project env vars** (Production + Preview): `DATABASE_URL` (pooled), `DB_SERVERLESS=true`, `ENVIRONMENT`, `ADMIN_TOKEN`, and optionally `AI_PROVIDER=anthropic` + `AI_API_KEY`.
 3. **GitHub secrets:**
 
@@ -187,7 +188,7 @@ When any CI job fails on a PR, the **AI failure explainer** posts the probable c
 2. **Set repository variables:** `TF_BACKEND_CONFIG` (e.g. `bucket=my-tf-state`), plus `AWS_DEPLOY_ROLE_ARN` + `AWS_REGION`, `GCP_WIF_PROVIDER` + `GCP_DEPLOY_SA` + `GCP_PROJECT_ID` + `GCP_REGION`, or `AZURE_CLIENT_ID` + `AZURE_TENANT_ID` + `AZURE_SUBSCRIPTION_ID`.
 3. **First apply** (creates the cluster, database and registry):
    ```bash
-   cd infra/terraform/live/gcp          # or aws / azure
+   cd infra/terraform/stacks/gcp          # or aws / azure
    cp example.tfvars terraform.tfvars   # project/region/size/image_tag
    terraform init -backend-config="bucket=my-tf-state" && terraform apply
    ```
@@ -216,11 +217,11 @@ The plan is posted as a table on the PR, then executed by reviewed workflow step
 
 ### 2. Intent → environment config (generative IaC with guardrails)
 
-`environments/staging.intent.yaml` describes the need, not the build: *"Cost-sensitive staging for QA and demos, best-effort, $300/month, ~3 rps"*. `aiops envgen` asks Claude for sizing (size preset + replica ranges + rationale), then:
+`infra/environments/staging.intent.yaml` describes the need, not the build: *"Cost-sensitive staging for QA and demos, best-effort, $300/month, ~3 rps"*. `aiops envgen` asks Claude for sizing (size preset + replica ranges + rationale), then:
 
-- clamps it to `environments/policy.yaml` (allowed sizes, replica caps, ≥2 replicas for critical);
+- clamps it to `infra/environments/policy.yaml` (allowed sizes, replica caps, ≥2 replicas for critical);
 - walks the size down until a deterministic cost estimate fits the budget;
-- writes `environments/generated/<env>.tfvars` + `<env>.values.yaml`, which the Terraform roots consume.
+- writes `infra/environments/generated/<env>.tfvars` + `<env>.values.yaml`, which the Terraform roots consume.
 
 `ai-env-config.yml` opens the result as a **PR**, so generated infrastructure is reviewed like any other code. *Value:* developers say "cost-sensitive staging" or "HA production for launch" and get a reviewed, budget-checked config. Today's generated output is `staging → small, ~$204/mo` and `production → ha, ≥2 replicas per tier, ~$1,472/mo`.
 
@@ -275,7 +276,7 @@ The design separates **what** the app needs from **how** each provider sells it,
 Switching clouds means changing a few variables:
 
 ```hcl
-# live/gcp/terraform.tfvars          # live/aws/terraform.tfvars
+# stacks/gcp/terraform.tfvars        # stacks/aws/terraform.tfvars
 project_id = "my-project"            region    = "eu-central-1"
 region     = "europe-west3"          size      = "small"
 size       = "small"                 image_tag = "3f2c1ab"
@@ -284,8 +285,8 @@ image_tag  = "3f2c1ab"
 
 **Adding a fourth cloud** (say DigitalOcean) takes three steps:
 1. write `modules/platform/digitalocean` (DOKS + Managed Postgres + DOCR) that emits the seven contract outputs;
-2. add a ~70-line `live/digitalocean` root (provider auth + `module "platform"` + `module "app"`);
-3. add `values-digitalocean.yaml` (ingress class) and one login step in `deploy-k8s.yml`.
+2. add a ~70-line `stacks/digitalocean` root (provider auth + `module "platform"` + `module "app"`);
+3. add `values/digitalocean.yaml` (ingress class) and one login step in `deploy-k8s.yml`.
 
 `modules/app`, the chart, the images, the AI tooling and the health gate are unchanged.
 
@@ -299,7 +300,7 @@ image_tag  = "3f2c1ab"
 |---|---|---|
 | **Vercel + Neon** | Live, deployed by `deploy-vercel.yml` | **https://ideas.infrenic.com** |
 | **Kubernetes on kind** | Verified locally: install, migration hook, ingress, upgrade + `helm rollback` | `make kind-up` → http://localhost:8088 |
-| EKS / GKE / AKS | Terraform + workflow written and `validate`d; not applied (no cloud spend for this project) | `terraform apply` in `infra/terraform/live/<cloud>` |
+| EKS / GKE / AKS | Terraform + workflow written and `validate`d; not applied (no cloud spend for this project) | `terraform apply` in `infra/terraform/stacks/<cloud>` |
 
 ---
 

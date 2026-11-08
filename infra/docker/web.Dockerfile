@@ -7,7 +7,7 @@ COPY apps/web ./
 RUN npm run build
 
 # Run: serve it with nginx (which also proxies /api to the API)
-FROM nginxinc/nginx-unprivileged:1.29-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 ENV API_UPSTREAM=http://api:8000
 # Install OS security fixes the base image doesn't have yet
 USER root

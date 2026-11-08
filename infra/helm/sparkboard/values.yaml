@@ -28,7 +28,7 @@ web:
     limits: { memory: 96Mi }
   autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 6, targetCPU: 75 }
 
-# Secrets: either let the chart create one from these values (dev/kind), or
+# Secrets: either let the chart create one from these values (dev/test), or
 # point at a Secret managed outside Helm (Terraform / External Secrets) in prod.
 secrets:
   existingSecret: ""     # name of a Secret holding DATABASE_URL, ADMIN_TOKEN, AI_API_KEY
@@ -43,7 +43,7 @@ migrations:
 ingress:
   enabled: true
   className: nginx
-  host: ""               # empty = match any host (useful on kind / raw LB IP)
+  host: ""               # empty = match any host (useful on a raw LB IP)
   annotations: {}
   tls: { enabled: false, secretName: sparkboard-tls }
 

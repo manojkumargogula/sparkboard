@@ -1,4 +1,4 @@
-/** Wire types, mirroring apps/api/src/sparkboard_api/schemas.py. */
+/** Wire types, mirroring app/backend/src/sparkboard_api/schemas.py. */
 
 export type IdeaStatus = "open" | "planned" | "building" | "shipped";
 export type SortOrder = "trending" | "new" | "top";

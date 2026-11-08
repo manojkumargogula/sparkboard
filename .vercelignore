@@ -1,11 +1,11 @@
-# Vercel only needs apps/web (static build), api/index.py + apps/api/src (the function).
+# Vercel only needs app/ui (static build), api/index.py + app/backend/src (the function).
 .env*
 !.env.example
 infra
 docs
 tools
 .github
-apps/web/node_modules
-apps/api/.venv
-apps/api/tests
+app/ui/node_modules
+app/backend/.venv
+app/backend/tests
 **/__pycache__

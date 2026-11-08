@@ -32,7 +32,7 @@ Commit the result through a normal PR. Current output: staging → `small` (~$20
 
 ## In the product
 
-The composer's **Sharpen** button uses the same pattern inside the API (`apps/api/src/sparkboard_api/ai/`, Anthropic or any OpenAI-compatible endpoint). It is rate-limited, treats user text as data, and is hidden when no AI key is configured.
+The composer's **Sharpen** button uses the same pattern inside the API (`app/backend/src/sparkboard_api/ai/`, Anthropic or any OpenAI-compatible endpoint). It is rate-limited, treats user text as data, and is hidden when no AI key is configured.
 
 ## Running it
 

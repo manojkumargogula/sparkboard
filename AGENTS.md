@@ -12,15 +12,15 @@ Sparkboard is a community idea board, live at https://ideas.infrenic.com. People
 ```
 Browser (React SPA)
    │
-   ├── Vercel CDN ── static build of apps/web
-   └── /api/* ────── Vercel Python function (api/index.py) ── FastAPI app (apps/api) ── Neon Postgres
+   ├── Vercel CDN ── static build of app/ui
+   └── /api/* ────── Vercel Python function (api/index.py) ── FastAPI app (app/backend) ── Neon Postgres
 ```
 
 | Path | What lives there |
 |---|---|
-| `apps/api/` | FastAPI service. `src/sparkboard_api/` layers: `api/routers` (HTTP) → `services` (use cases, transactions) → `repositories` (all SQL) → `models.py` (tables). `schemas.py` holds Pydantic contracts, `core/` holds config, db, logging, rate limits, auth, `ai/` holds the LLM provider adapters |
-| `apps/api/alembic/versions/` | database migrations, numbered `0001_…`, `0002_…` |
-| `apps/web/` | React 19 SPA. `src/features/<feature>/` per product area, `src/ui/` shared components, `src/lib/` API client, queries and helpers |
+| `app/backend/` | FastAPI service. `src/sparkboard_api/` layers: `api/routers` (HTTP) → `services` (use cases, transactions) → `repositories` (all SQL) → `models.py` (tables). `schemas.py` holds Pydantic contracts, `core/` holds config, db, logging, rate limits, auth, `ai/` holds the LLM provider adapters |
+| `app/backend/alembic/versions/` | database migrations, numbered `0001_…`, `0002_…` |
+| `app/ui/` | React 19 SPA. `src/features/<feature>/` per product area, `src/ui/` shared components, `src/lib/` API client, queries and helpers |
 | `tools/aiops/` | deploy health gate (`smoke`, `health`) and AI environment sizing (`envgen`) |
 | `infra/docker/` | Dockerfiles + nginx config (local stack and Kubernetes) |
 | `infra/helm/sparkboard/` | Kubernetes chart, per-cloud overlays in `values/` |

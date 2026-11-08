@@ -84,7 +84,7 @@ jobs:
       # (expand → deploy → contract). The previous release keeps working on the new schema.
       - name: Migrate database
         if: ${{ !inputs.rollback }}
-        working-directory: apps/api
+        working-directory: app/backend
         env:
           DATABASE_URL: ${{ (inputs.environment || 'production') == 'production' && secrets.DATABASE_URL_UNPOOLED || secrets.PREVIEW_DATABASE_URL_UNPOOLED }}
         run: uv run --frozen alembic upgrade head

@@ -28,7 +28,7 @@ repos:
     hooks:
       - id: web-lint
         name: web lint + types
-        entry: bash -c 'cd apps/web && npm run lint && npm run typecheck'
+        entry: bash -c 'cd app/ui && npm run lint && npm run typecheck'
         language: system
-        files: ^apps/web/
+        files: ^app/ui/
         pass_filenames: false

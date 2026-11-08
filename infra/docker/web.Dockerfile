@@ -1,5 +1,5 @@
 # Build: compile the React app into /app/dist
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY app/ui/package.json app/ui/package-lock.json ./
 RUN npm ci

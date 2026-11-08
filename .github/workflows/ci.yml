@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, security-events: write }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Semgrep (Python, TypeScript, React, Dockerfiles, Terraform, workflows)
         run: |
           docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.140.0 semgrep scan \
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, security-events: write }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Report every severity to the Security tab (never fails the job)...
       - name: Trivy filesystem scan → code scanning report
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -101,7 +101,7 @@ jobs:
     name: Code scanning · gitleaks (full history)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
@@ -113,7 +113,7 @@ jobs:
     strategy:
       matrix: { image: [api, web] }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t sparkboard-${{ matrix.image }}:ci -f infra/docker/${{ matrix.image }}.Dockerfile .
       - name: Trivy image scan (fails on fixable HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -137,7 +137,7 @@ jobs:
         ports: ["5433:5432"]
         options: --health-cmd "pg_isready -U sparkboard" --health-interval 3s --health-retries 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
       - run: uv sync --frozen
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: app/ui } }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: app/ui/package-lock.json }
       - run: npm ci --no-audit --no-fund
@@ -185,7 +185,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: tools/aiops } }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
       - run: uv sync --frozen
@@ -197,7 +197,7 @@ jobs:
     name: Infra · Dockerfiles, workflows, Terraform, Helm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Dockerfile lint (hadolint) · api
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with: { dockerfile: infra/docker/api.Dockerfile, failure-threshold: warning }
@@ -234,7 +234,7 @@ jobs:
     needs: [api, web]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Start the stack
         run: |
           docker compose up -d --build --wait

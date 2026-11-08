@@ -66,7 +66,20 @@ jobs:
     permissions: { contents: read, security-events: write }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Trivy filesystem scan (fails on HIGH/CRITICAL)
+      # Report every severity to the Security tab (never fails the job)...
+      - name: Trivy filesystem scan → code scanning report
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          ignore-unfixed: true
+          trivyignores: infra/.trivyignore
+          format: sarif
+          output: trivy.sarif
+          exit-code: "0"
+      # ...but only HIGH/CRITICAL block a merge.
+      - name: Trivy gate (fails on HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
@@ -75,9 +88,9 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           trivyignores: infra/.trivyignore
-          format: sarif
-          output: trivy.sarif
+          format: table
           exit-code: "1"
+          skip-setup-trivy: true
       - name: Upload to code scanning
         if: always()
         continue-on-error: true

@@ -12,7 +12,7 @@ The repo has two workflows:
 | Job | Tool | Finds | Fails on |
 |---|---|---|---|
 | `sast` | **Semgrep** (`p/default`, `p/python`, `p/typescript`, `p/react`, `p/dockerfile`) | injection, XSS, insecure crypto, risky React and FastAPI patterns, Terraform and workflow misconfigurations | any finding |
-| `trivy` | **Trivy** filesystem scan | vulnerable dependencies (`uv.lock`, `package-lock.json`), IaC misconfigurations (Terraform, Helm, Dockerfiles), committed secrets | HIGH or CRITICAL |
+| `trivy` | **Trivy** filesystem scan | vulnerable dependencies (`uv.lock`, `package-lock.json`), IaC misconfigurations (Terraform, Helm, Dockerfiles), committed secrets | HIGH or CRITICAL (lower severities are reported, not blocking) |
 | `secrets` | **gitleaks** | secrets anywhere in git history | any finding |
 | `images` | **Trivy** image scan | OS and library CVEs in the built api and web images | fixable HIGH or CRITICAL |
 

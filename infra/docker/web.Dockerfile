@@ -19,7 +19,7 @@ ENV API_UPSTREAM=http://api:8000
 USER 0
 # hadolint ignore=DL3017
 RUN apk upgrade --no-cache
-COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY infra/docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 USER 101
 EXPOSE 8080

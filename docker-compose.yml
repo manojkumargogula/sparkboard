@@ -33,7 +33,7 @@ services:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
 
   migrate:
-    build: { context: ., dockerfile: docker/api.Dockerfile }
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile }
     image: sparkboard-api:local
     command: ["alembic", "upgrade", "head"]
     environment: *api-env
@@ -62,7 +62,7 @@ services:
     restart: unless-stopped
 
   web:
-    build: { context: ., dockerfile: docker/web.Dockerfile }
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
     image: sparkboard-web:local
     environment:
       API_UPSTREAM: http://api:8000

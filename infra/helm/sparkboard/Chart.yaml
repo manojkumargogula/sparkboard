@@ -1,6 +1,6 @@
 apiVersion: v2
 name: sparkboard
-description: Sparkboard idea board (web + API). Cloud-neutral; cloud specifics live in values-<cloud>.yaml.
+description: Sparkboard idea board (web + API). Cloud-neutral; cloud specifics live in values/<cloud>.yaml.
 type: application
 version: 1.0.0
 appVersion: "1.0.0"

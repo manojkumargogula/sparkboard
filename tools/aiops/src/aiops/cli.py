@@ -119,7 +119,7 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("envgen", help="intent yaml → tfvars + helm values")
     e.add_argument("--intent", required=True)
     e.add_argument("--policy")
-    e.add_argument("--out-dir", default="environments/generated")
+    e.add_argument("--out-dir", default="infra/environments/generated")
     e.set_defaults(fn=cmd_envgen)
 
     x = sub.add_parser("explain", help="explain a failed CI log")

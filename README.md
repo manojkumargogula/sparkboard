@@ -76,7 +76,7 @@ flowchart LR
 apps/api/            FastAPI service: routers → services → repositories → models (one layer = one job)
 apps/web/            React SPA: features/{feed,composer,vote,idea,roadmap,palette,profile}, ui/, lib/
 api/index.py         Vercel entry point (re-exports the FastAPI app)
-docker-compose.yml   local stack: db → migrate → api → web (+ optional seed)
+docker-compose.yml   local stack: db → api (runs migrations first) → web
 infra/               everything that builds, ships or provisions the app (see infra/README.md)
   docker/            api + web Dockerfiles (multi-stage, non-root), nginx template
   helm/sparkboard/   one chart for every cluster; values/<cloud>.yaml holds the small differences
@@ -101,7 +101,7 @@ More detail, including the request path, data model and deploy sequence diagrams
 git clone https://github.com/manojkumargogula/sparkboard && cd sparkboard
 cp .env.example .env              # optional: add AI_PROVIDER=anthropic + AI_API_KEY for "Sharpen"
 docker compose up -d --build --wait
-docker compose --profile seed run --rm seed   # optional demo ideas
+docker compose exec -T api python -m sparkboard_api.seed   # optional demo ideas
 open http://localhost:8080
 ```
 

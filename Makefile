@@ -5,11 +5,10 @@ SHELL := /bin/bash
 API := apps/api
 WEB := apps/web
 AIOPS := tools/aiops
-TF_ROOTS := aws gcp azure vercel
 DB_URL := postgresql://sparkboard:sparkboard@localhost:$${DB_PORT:-5432}/sparkboard
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+	@grep '##' Makefile | grep -v grep
 
 install: ## Install all dependencies
 	cd $(API) && uv sync
@@ -18,7 +17,7 @@ install: ## Install all dependencies
 
 up: ## Run the full stack in Docker (http://localhost:8080) with demo data
 	docker compose up -d --build --wait
-	docker compose --profile seed run --rm seed
+	docker compose exec -T api python -m sparkboard_api.seed
 
 down: ## Stop the stack
 	docker compose down
@@ -50,8 +49,11 @@ e2e: ## Playwright against the running stack (`make up` first)
 
 check: lint test ## lint + test
 
-tf-validate: ## terraform init/validate every root (no cloud credentials needed)
-	@for r in $(TF_ROOTS); do echo "› $$r"; (cd infra/terraform/stacks/$$r && terraform init -backend=false -input=false >/dev/null && terraform validate) || exit 1; done
+tf-validate: ## Check every Terraform stack (no cloud credentials needed)
+	for stack in aws gcp azure vercel; do \
+	  terraform -chdir=infra/terraform/stacks/$$stack init -backend=false && \
+	  terraform -chdir=infra/terraform/stacks/$$stack validate || exit 1; \
+	done
 
 kind-up: ## Deploy the Helm chart to a local kind cluster (http://localhost:8088)
 	infra/kind/up.sh
@@ -60,8 +62,9 @@ kind-down: ## Delete the kind cluster
 	infra/kind/down.sh
 
 envgen: ## Regenerate environment configs from infra/environments/*.intent.yaml
-	@for f in infra/environments/*.intent.yaml; do \
-	  (cd $(AIOPS) && uv run aiops envgen --intent ../../$$f --policy ../../infra/environments/policy.yaml --out-dir ../../infra/environments/generated); \
+	cd $(AIOPS) && for env in staging production; do \
+	  uv run aiops envgen --intent ../../infra/environments/$$env.intent.yaml \
+	    --policy ../../infra/environments/policy.yaml --out-dir ../../infra/environments/generated; \
 	done
 
 .PHONY: help install up down dev lint test-db test e2e check tf-validate kind-up kind-down envgen

@@ -9,7 +9,7 @@ infra/
   docker/                 container images
     api.Dockerfile        FastAPI (uv, slim, non-root, gunicorn + uvicorn)
     web.Dockerfile        Vite build → nginx-unprivileged
-    nginx/                nginx template (SPA routing, /api proxy, CSP)
+    nginx.conf            serves the app, proxies /api, security headers
   helm/sparkboard/        one chart for every Kubernetes target
     values.yaml           cloud-neutral defaults
     values/<target>.yaml  small per-target overlays: aws · gcp · azure · kind

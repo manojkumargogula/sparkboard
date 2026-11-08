@@ -1,77 +1,57 @@
-# Local stack: Postgres → one-shot migrations → API → web (nginx + SPA).
-#   docker compose up --build        # http://localhost:8080
-#   docker compose --profile seed up seed   # optional demo content
+# docker compose up --build   →   http://localhost:8080
 name: sparkboard
-
-x-api-env: &api-env
-  DATABASE_URL: postgresql://sparkboard:${POSTGRES_PASSWORD:-sparkboard}@db:5432/sparkboard
-  ENVIRONMENT: local
-  LOG_JSON: "true"
-  CORS_ORIGINS: '["http://localhost:8080","http://localhost:5173"]'
-  ADMIN_TOKEN: ${ADMIN_TOKEN:-change-me-locally}
-  AI_PROVIDER: ${AI_PROVIDER:-none}
-  AI_API_KEY: ${AI_API_KEY:-}
-  AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
-  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-  AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
 
 services:
   db:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: sparkboard
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sparkboard}
+      POSTGRES_PASSWORD: sparkboard
       POSTGRES_DB: sparkboard
     volumes:
       - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sparkboard -d sparkboard"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
     ports:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
-
-  migrate:
-    build: { context: ., dockerfile: infra/docker/api.Dockerfile }
-    image: sparkboard-api:local
-    command: ["alembic", "upgrade", "head"]
-    environment: *api-env
-    depends_on:
-      db: { condition: service_healthy }
-    restart: "no"
-
-  seed:
-    image: sparkboard-api:local
-    command: ["python", "-m", "sparkboard_api.seed"]
-    environment: *api-env
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-    profiles: ["seed"]
+    healthcheck:
+      test: pg_isready -U sparkboard
+      interval: 3s
+      retries: 20
 
   api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
     image: sparkboard-api:local
-    environment: *api-env
-    depends_on:
-      migrate: { condition: service_completed_successfully }
+    # Run database migrations, then start the API.
+    command: sh -c "alembic upgrade head && uvicorn sparkboard_api.main:app --host 0.0.0.0 --port 8000"
+    environment:
+      DATABASE_URL: postgresql://sparkboard:sparkboard@db:5432/sparkboard
+      ENVIRONMENT: local
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-change-me-locally}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      AI_API_KEY: ${AI_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
     ports:
       - "127.0.0.1:8000:8000"
-    read_only: true
-    tmpfs: ["/tmp"]
-    security_opt: ["no-new-privileges:true"]
-    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"
+      interval: 5s
+      retries: 20
 
   web:
-    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
     image: sparkboard-web:local
-    environment:
-      API_UPSTREAM: http://api:8000
-    depends_on:
-      api: { condition: service_healthy }
     ports:
       - "8080:8080"
-    security_opt: ["no-new-privileges:true"]
-    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:

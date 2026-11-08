@@ -8,3 +8,7 @@ AVD-AWS-0040
 # Worker node egress: nodes must reach ECR, STS and the EKS API; egress is
 # open by design in terraform-aws-modules/eks. Ingress stays locked down.
 AVD-AWS-0104
+
+# Cloud SQL: ssl_mode = ENCRYPTED_ONLY already rejects non-TLS connections. The
+# check wants client certificates too, which the app does not use (password over TLS).
+AVD-GCP-0015

@@ -1,34 +1,34 @@
-# deps / builds
+# dependencies and build output
 node_modules/
 dist/
 .venv/
 __pycache__/
 *.pyc
+
+# tool caches and reports
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-coverage/
 .coverage
+coverage/
 coverage.xml
 htmlcov/
 playwright-report/
 test-results/
-# env & secrets
+
+# secrets (only the example is committed)
 .env
 .env.*
 !.env.example
-*.tfvars.secret
+
 # terraform
 .terraform/
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl.bak
 crash.log
-# vercel
+
+# local tooling
 .vercel/
-# os
-.DS_Store
-.vercel
-.env*
-!.env.example
+.shots/
 *.tmp.mjs
+.DS_Store

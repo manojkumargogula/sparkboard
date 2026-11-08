@@ -1,5 +1,29 @@
 # Architecture
 
+## System
+
+```mermaid
+flowchart LR
+  B[Browser · React SPA]
+
+  subgraph Serverless["Vercel (live)"]
+    CDN[Vercel CDN<br/>static SPA] --> FN[Python function<br/>FastAPI]
+    FN --> NEON[(Neon Postgres<br/>pooled)]
+  end
+
+  subgraph K8s["Kubernetes (EKS / GKE / AKS)"]
+    ING[Ingress] --> WEB[web pods<br/>nginx + SPA]
+    WEB -->|/api| API[api pods<br/>FastAPI]
+    API --> PG[(Managed Postgres<br/>RDS / Cloud SQL / Flexible)]
+    JOB[migration Job<br/>Helm pre-upgrade hook] --> PG
+  end
+
+  B --> CDN
+  B --> ING
+```
+
+The same API and web code runs on both targets. On Vercel, `api/index.py` wraps the FastAPI app as a serverless function and `vercel.json` routes `/api/*` to it. On Kubernetes, nginx serves the SPA and proxies `/api` to the API pods.
+
 ## Request path
 
 ```mermaid
@@ -30,7 +54,8 @@ services/*        use-cases and transactions; raise domain errors (NotFoundError
 repositories/*    every SQL statement lives here
 models.py         SQLAlchemy tables      schemas.py   Pydantic contracts (validation at the edge)
 ai/*              LLMProvider protocol → anthropic | openai-compatible | null
-core/*            config, db engine, logging, rate limiter, device-token hashing
+core/*            config, db engine, logging, rate limiter, device tokens, Google token check
+importers/*       idempotent data loaders (curated problems)
 ```
 
 `create_app(settings)` is a factory, so tests build an isolated app per test against a real Postgres. Nothing reads global state.
@@ -42,6 +67,7 @@ erDiagram
   authors ||--o{ ideas : posts
   authors ||--o{ votes : casts
   authors ||--o{ comments : writes
+  authors ||--o{ author_devices : "signs in from"
   ideas ||--o{ votes : receives
   ideas ||--o{ comments : has
 
@@ -55,6 +81,7 @@ erDiagram
     uuid author_id FK "nullable: anonymous posts allowed"
     int vote_count "denormalised for fast sorting"
     int comment_count
+    varchar source "curated set: source, rank, score"
   }
   votes {
     int id PK
@@ -63,9 +90,14 @@ erDiagram
   }
   authors {
     uuid id PK
-    char device_hash "sha256 of the device token, unique"
+    char device_hash "sha256 of a device token (anonymous use)"
+    varchar google_sub "unique Google account id"
     varchar display_name
-    varchar avatar_seed
+    varchar picture_url
+  }
+  author_devices {
+    char device_hash PK "every device a Google account signed in from"
+    uuid author_id FK
   }
 ```
 
@@ -94,24 +126,19 @@ sequenceDiagram
   end
 ```
 
-## Deploy sequence (Kubernetes, any cloud)
+## Security
 
-```mermaid
-sequenceDiagram
-  participant GH as GitHub Actions
-  participant C as Cloud (OIDC)
-  participant TF as Terraform
-  participant K as Cluster
-  participant AI as aiops
+- **Least privilege at runtime.** Containers run non-root with a read-only root filesystem, drop all capabilities and use the RuntimeDefault seccomp profile. Namespaces enforce the restricted Pod Security standard. A NetworkPolicy lets only the web tier reach the API.
+- **Identity.** Google ID tokens are verified against Google's published keys (signature, audience, issuer, expiry, verified email). Device tokens are stored only as SHA-256 hashes. The admin token is compared in constant time.
+- **Abuse limits.** Per-device and per-IP rate limits on writes and AI calls, strict input validation, and fully parameterised SQL through SQLAlchemy.
+- **Secrets.** Never in the repo or in Helm history. The Kubernetes Terraform uses workload identity, so pods hold no static cloud keys.
+- **Code scanning.** Every PR runs Semgrep, Trivy (dependencies, IaC, secrets, images), gitleaks, bandit, pip-audit and npm audit (see [ci.md](ci.md)).
+- **Pipeline.** Least-privilege `permissions:` per job, every action pinned to a commit SHA, secrets scoped to the job that uses them, and a 7-day Dependabot cooldown. LLM inputs are fenced as untrusted data, and model output is never executed.
+- **Headers.** CSP, `X-Frame-Options: DENY`, nosniff, a strict referrer policy and a permissions policy, set by nginx (`infra/docker/nginx.conf`) and Vercel (`vercel.json`).
 
-  GH->>C: federated login (no static keys)
-  GH->>C: docker push registry_url/sparkboard-{api,web}:SHA
-  GH->>TF: apply (image_tag=SHA, generated tfvars)
-  TF->>K: helm_release (atomic): migrate Job hook → rolling update
-  Note over K: failed rollout ⇒ Helm rolls back by itself
-  GH->>K: probe ingress + kubectl logs
-  GH->>AI: health gate
-  alt unhealthy
-    GH->>K: helm rollback · incident issue
-  end
-```
+## Trade-offs and next steps
+
+- **Rate limiting is per instance** (in-process). Fine for one replica or serverless instance; at scale it moves to the edge (Vercel Firewall / ingress) or Redis.
+- **Polling, not websockets**, for "new ideas". Simpler and works on serverless; SSE would be next.
+- **The Kubernetes targets are not applied.** Three managed clusters cost real money each month. The chart is linted and schema-checked for each cloud, and the Terraform is validated and scanned in CI.
+- **Next:** a "follow an idea" email digest, moderation tools (merge duplicates), and OpenTelemetry traces feeding the health gate.

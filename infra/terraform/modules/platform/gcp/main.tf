@@ -139,7 +139,9 @@ resource "google_sql_database_instance" "this" {
       ipv4_enabled                                  = false
       private_network                               = google_compute_network.vpc.id
       enable_private_path_for_google_cloud_services = true
-      ssl_mode                                      = "ENCRYPTED_ONLY"
+      # TLS is required for every connection. Client certificates are not: the app
+      # authenticates with a password over TLS (sslmode=require).
+      ssl_mode = "ENCRYPTED_ONLY" # nosemgrep: gcp-sql-database-ssl-insecure-value-postgres-mysql
     }
 
     backup_configuration {

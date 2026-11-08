@@ -1,10 +1,15 @@
 name: CI
 
+# Static analysis, code scanning and tests. Every job must pass before a merge,
+# and deploy-vercel.yml only ships commits on main that passed this workflow.
+# Semgrep and Trivy findings also appear under Security → Code scanning.
+
 on:
   pull_request:
   push:
     branches: [main]
-  workflow_call:
+  schedule:
+    - cron: "0 6 * * 1" # weekly: catch new CVEs in code that hasn't changed
 
 permissions:
   contents: read
@@ -19,28 +24,80 @@ env:
   TF_VERSION: "1.16.1"
 
 jobs:
-  # Skip work for parts of the repo a change doesn't touch.
-  changes:
+  # ---------------------------------------------------------------- code scanning
+
+  sast:
+    name: Code scanning · Semgrep
     runs-on: ubuntu-latest
-    outputs:
-      api: ${{ steps.f.outputs.api }}
-      web: ${{ steps.f.outputs.web }}
-      aiops: ${{ steps.f.outputs.aiops }}
-      iac: ${{ steps.f.outputs.iac }}
+    permissions: { contents: read, security-events: write }
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: f
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Semgrep (Python, TypeScript, React, Dockerfiles, Terraform, workflows)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.140.0 semgrep scan \
+            --config p/default --config p/python --config p/typescript --config p/react --config p/dockerfile \
+            --metrics off --error --sarif-output=semgrep.sarif
+      - name: Upload to code scanning
+        if: always()
+        continue-on-error: true # forks can't write security events
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+        with: { sarif_file: semgrep.sarif, category: semgrep }
+
+  trivy:
+    name: Code scanning · Trivy (dependencies, IaC, secrets)
+    runs-on: ubuntu-latest
+    permissions: { contents: read, security-events: write }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Trivy filesystem scan (fails on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          filters: |
-            api: ['apps/api/**', 'infra/docker/api.Dockerfile', 'requirements.txt']
-            web: ['apps/web/**', 'infra/docker/web.Dockerfile', 'infra/docker/nginx.conf']
-            aiops: ['tools/aiops/**']
-            iac: ['infra/terraform/**', 'infra/helm/**']
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: infra/.trivyignore
+          format: sarif
+          output: trivy.sarif
+          exit-code: "1"
+      - name: Upload to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+        with: { sarif_file: trivy.sarif, category: trivy }
+
+  secrets:
+    name: Code scanning · gitleaks (full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  images:
+    name: Code scanning · container images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { image: [api, web] }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: docker build -t sparkboard-${{ matrix.image }}:ci -f infra/docker/${{ matrix.image }}.Dockerfile .
+      - name: Trivy image scan (fails on fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: sparkboard-${{ matrix.image }}:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # ------------------------------------------------- static analysis + tests
 
   api:
-    needs: changes
-    if: needs.changes.outputs.api == 'true' || github.event_name != 'pull_request'
+    name: API · lint, types, security, tests
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/api } }
     services:
@@ -48,11 +105,10 @@ jobs:
         image: postgres:17-alpine
         env: { POSTGRES_USER: sparkboard, POSTGRES_PASSWORD: sparkboard, POSTGRES_DB: sparkboard_test }
         ports: ["5433:5432"]
-        options: >-
-          --health-cmd "pg_isready -U sparkboard" --health-interval 3s --health-timeout 3s --health-retries 20
+        options: --health-cmd "pg_isready -U sparkboard" --health-interval 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
       - run: uv sync --frozen
       - name: Lint (ruff)
@@ -61,70 +117,99 @@ jobs:
         run: uv run ruff format --check .
       - name: Types (mypy --strict)
         run: uv run mypy
-      - name: Security (bandit)
+      - name: Security lint (bandit)
         run: uv run bandit -q -c pyproject.toml -r src
       - name: Dependency audit (pip-audit)
         run: uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt | uv run pip-audit --strict -r /dev/stdin
       - name: Tests (pytest, coverage ≥ 85%)
         run: uv run pytest
-      - name: Vercel requirements.txt is in sync with uv.lock
+      - name: requirements.txt matches uv.lock (run `make requirements` if this fails)
         run: |
           uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt \
             | grep -v '^#' | grep -v '^ ' | diff - ../../requirements.txt
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with: { name: api-coverage, path: apps/api/coverage.xml, if-no-files-found: ignore }
 
   web:
-    needs: changes
-    if: needs.changes.outputs.web == 'true' || github.event_name != 'pull_request'
+    name: Web · lint, types, tests, build
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/web } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: apps/web/package-lock.json }
       - run: npm ci --no-audit --no-fund
-      - name: Lint (eslint, strict type-checked + jsx-a11y)
+      - name: Lint (eslint strict type-checked + jsx-a11y)
         run: npm run lint
       - name: Format (prettier)
         run: npm run format:check
       - name: Types (tsc)
         run: npm run typecheck
+      - name: Dependency audit (npm audit)
+        run: npm audit --omit=dev --audit-level=high
       - name: Tests (vitest + coverage thresholds)
         run: npm test
-      - name: Build
-        run: npm run build
-      - name: Bundle size budget
-        run: npm run size
-      - name: Dependency audit
-        run: npm audit --omit=dev --audit-level=high
+      - name: Build + bundle size budget
+        run: npm run build && npm run size
 
   aiops:
-    needs: changes
-    if: needs.changes.outputs.aiops == 'true' || github.event_name != 'pull_request'
+    name: aiops · lint, types, tests
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: tools/aiops } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
       - run: uv sync --frozen
       - run: uv run ruff check --output-format github . && uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest
 
-  e2e:
-    needs: [api, web]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+  infra:
+    name: Infra · Dockerfiles, workflows, Terraform, Helm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Start the stack (docker compose)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Dockerfile lint (hadolint) · api
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with: { dockerfile: infra/docker/api.Dockerfile, failure-threshold: warning }
+      - name: Dockerfile lint (hadolint) · web
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with: { dockerfile: infra/docker/web.Dockerfile, failure-threshold: warning }
+      - name: Workflow lint (actionlint + shellcheck)
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with: { terraform_version: "${{ env.TF_VERSION }}" }
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+      - name: Terraform validate (every stack)
+        run: |
+          for stack in aws gcp azure vercel; do
+            terraform -chdir=infra/terraform/stacks/$stack init -backend=false -input=false
+            terraform -chdir=infra/terraform/stacks/$stack validate
+          done
+      - uses: terraform-linters/setup-tflint@90f302c255ef959cbfb4bd10581afecdb7ece3e6 # v4
+      - name: Terraform lint (tflint)
+        run: tflint --init && tflint --recursive --chdir=infra/terraform/modules --minimum-failure-severity=warning
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+      - name: Helm lint + schema check (kubeconform) for every cloud
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          for cloud in aws gcp azure; do
+            helm lint infra/helm/sparkboard -f infra/helm/sparkboard/values/$cloud.yaml --set secrets.databaseUrl=postgresql://ci@db/ci
+            helm template sb infra/helm/sparkboard -f infra/helm/sparkboard/values/$cloud.yaml \
+              --set secrets.databaseUrl=postgresql://ci@db/ci | ./kubeconform -strict -summary -kubernetes-version 1.33.0
+          done
+
+  e2e:
+    name: End-to-end (Playwright on docker compose)
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Start the stack
         run: |
           docker compose up -d --build --wait
           docker compose exec -T api python -m sparkboard_api.seed
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: apps/web/package-lock.json }
       - name: Playwright
         working-directory: apps/web
@@ -135,130 +220,6 @@ jobs:
           npm run e2e
       - if: failure()
         run: docker compose logs --no-color > compose.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with: { name: e2e-report, path: "apps/web/playwright-report\ncompose.log" }
-
-  containers:
-    needs: changes
-    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.web == 'true' || github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: { image: [api, web] }
-    steps:
-      - uses: actions/checkout@v4
-      - name: Dockerfile lint (hadolint)
-        uses: hadolint/hadolint-action@v3.1.0
-        with: { dockerfile: "infra/docker/${{ matrix.image }}.Dockerfile", failure-threshold: warning }
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infra/docker/${{ matrix.image }}.Dockerfile
-          tags: sparkboard-${{ matrix.image }}:ci
-          load: true
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-      - name: Image scan (trivy, fail on HIGH/CRITICAL with a fix)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: sparkboard-${{ matrix.image }}:ci
-          # Vulnerabilities only: secrets are scanned in the repo by gitleaks, and the
-          # image secret scanner false-positives on example strings in SDK docstrings.
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-
-  iac:
-    needs: changes
-    if: needs.changes.outputs.iac == 'true' || github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix: { root: [aws, gcp, azure, vercel] }
-    defaults: { run: { working-directory: "infra/terraform/stacks/${{ matrix.root }}" } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: "${{ env.TF_VERSION }}" }
-      - name: terraform fmt
-        run: terraform fmt -check -recursive ../..
-      - name: terraform validate
-        run: terraform init -backend=false -input=false && terraform validate
-      - uses: terraform-linters/setup-tflint@v4
-      - name: tflint
-        run: tflint --init && tflint --recursive --chdir=../../modules --minimum-failure-severity=warning
-
-  iac-security:
-    needs: changes
-    if: needs.changes.outputs.iac == 'true' || github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Misconfiguration scan (trivy config)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: config
-          scan-ref: .
-          severity: CRITICAL
-          exit-code: "1"
-          trivyignores: .trivyignore
-
-  helm:
-    needs: changes
-    if: needs.changes.outputs.iac == 'true' || github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
-      - name: helm lint
-        run: helm lint infra/helm/sparkboard -f infra/helm/sparkboard/values/aws.yaml --set secrets.databaseUrl=postgresql://ci@db/ci
-      - name: Render every cloud and validate against Kubernetes schemas
-        run: |
-          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
-          for v in aws gcp azure; do
-            helm template sb infra/helm/sparkboard -f infra/helm/sparkboard/values/$v.yaml \
-              --set secrets.databaseUrl=postgresql://ci@db/ci \
-              | ./kubeconform -strict -summary -kubernetes-version 1.33.0
-          done
-
-  hygiene:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - name: Workflow lint (actionlint)
-        uses: raven-actions/actionlint@v2
-      - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # AI: when anything above fails on a PR, explain why in a comment.
-  explain-failure:
-    needs: [api, web, aiops, e2e, containers, iac, iac-security, helm, hygiene]
-    if: failure() && github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with: { version: "${{ env.UV_VERSION }}" }
-      - name: Collect failed job logs
-        env: { GH_TOKEN: "${{ github.token }}" }
-        run: |
-          gh run view ${{ github.run_id }} --log-failed > failed.log || true
-          tail -c 40000 failed.log > tail.log
-      - name: Explain
-        id: explain
-        working-directory: tools/aiops
-        env: { ANTHROPIC_API_KEY: "${{ secrets.ANTHROPIC_API_KEY }}" }
-        run: uv run --frozen aiops explain --log ../../tail.log --job "CI"
-      - uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: ai-ci-explainer
-          message: ${{ steps.explain.outputs.comment }}

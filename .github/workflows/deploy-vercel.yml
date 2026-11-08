@@ -1,65 +1,57 @@
 name: Deploy · Vercel
 
-# Production flow (zero-downtime, self-healing):
+# Runs after CI passes on main (or by hand). Zero-downtime production flow:
 #   migrate → deploy WITHOUT moving the domain → probe the new deployment →
-#   AI + SLO health gate → promote (domain moves) or leave traffic on the old
-#   release and open an incident issue with Claude's summary.
+#   health gate (SLOs + Claude) → promote, or keep traffic on the old release
+#   and open an incident issue.
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths-ignore: ["**.md", "docs/**", "infra/**"]
   workflow_dispatch:
     inputs:
       environment:
         type: choice
-        options: [preview, staging, production]
+        options: [preview, production]
         default: preview
       rollback:
+        description: Roll production back to the previous release
         type: boolean
         default: false
-  workflow_call:
-    inputs:
-      environment: { type: string, required: true }
-      ref: { type: string, required: false, default: "" }
-      rollback: { type: boolean, required: false, default: false }
-      pr: { type: string, required: false, default: "" }
 
 permissions:
   contents: read
-  actions: read
   issues: write
-  pull-requests: write
-  deployments: write
 
 concurrency:
   group: vercel-${{ inputs.environment || 'production' }}
   cancel-in-progress: false
 
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-  ENVIRONMENT: ${{ inputs.environment || 'production' }}
-  PUBLIC_URL: ${{ vars.PUBLIC_URL }}
-
 jobs:
-  ci:
-    if: github.event_name == 'push'
-    uses: ./.github/workflows/ci.yml
-
   deploy:
-    needs: [ci]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+    # Only CI runs triggered by a push to main (not the weekly scheduled scan).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment:
-      name: ${{ (inputs.environment || 'production') == 'production' && 'production' || 'preview' }}
+      name: ${{ inputs.environment || 'production' }}
       url: ${{ steps.result.outputs.url }}
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'production' }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-        with: { ref: "${{ inputs.ref || github.sha }}" }
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { ref: "${{ env.SHA }}" }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
       - name: Install tooling
         run: |
           npm i -g vercel@latest >/dev/null
@@ -73,14 +65,12 @@ jobs:
       - name: Roll back production
         if: inputs.rollback
         id: rollback
-        env: { VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}" }
         run: |
           vercel rollback --yes --token "$VERCEL_TOKEN"
           echo "url=$PUBLIC_URL" >> "$GITHUB_OUTPUT"
 
       - name: Build
         if: ${{ !inputs.rollback }}
-        env: { VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}" }
         run: |
           if [ "$ENVIRONMENT" = production ]; then
             vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
@@ -102,7 +92,6 @@ jobs:
       - name: Deploy (without moving the domain)
         if: ${{ !inputs.rollback }}
         id: deploy
-        env: { VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}" }
         run: |
           if [ "$ENVIRONMENT" = production ]; then
             url=$(vercel deploy --prebuilt --prod --skip-domain --token "$VERCEL_TOKEN")
@@ -124,42 +113,31 @@ jobs:
       - name: Collect runtime logs
         continue-on-error: true
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           URL: ${{ steps.deploy.outputs.url || steps.rollback.outputs.url }}
         run: timeout 25 vercel logs "$URL" --token "$VERCEL_TOKEN" > runtime.log 2>&1 || true
 
       - name: Health gate (SLOs + Claude)
         id: gate
         working-directory: tools/aiops
-        env: { ANTHROPIC_API_KEY: "${{ secrets.ANTHROPIC_API_KEY }}" }
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           uv run aiops health --current ../../current.json --baseline ../../baseline.json \
             --logs ../../runtime.log --max-error-rate 0.01 --max-p95-ms 2500
 
       - name: Promote
         if: steps.gate.outputs.decision == 'promote' && env.ENVIRONMENT == 'production' && !inputs.rollback
-        env: { VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}" }
-        run: vercel promote "${{ steps.deploy.outputs.url }}" --yes --token "$VERCEL_TOKEN"
-
-      - name: Alias staging
-        if: steps.gate.outputs.decision == 'promote' && env.ENVIRONMENT == 'staging' && vars.STAGING_DOMAIN != ''
-        env: { VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}" }
-        run: vercel alias set "${{ steps.deploy.outputs.url }}" "${{ vars.STAGING_DOMAIN }}" --token "$VERCEL_TOKEN"
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: vercel promote "$URL" --yes --token "$VERCEL_TOKEN"
 
       - name: Result
         id: result
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
         run: |
           if [ "$ENVIRONMENT" = production ]; then echo "url=$PUBLIC_URL" >> "$GITHUB_OUTPUT";
-          else echo "url=${{ steps.deploy.outputs.url }}" >> "$GITHUB_OUTPUT"; fi
-
-      - name: Report on the PR
-        if: always() && inputs.pr != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPORT: ${{ steps.gate.outputs.report }}
-          URL: ${{ steps.deploy.outputs.url || steps.rollback.outputs.url }}
-        run: |
-          gh pr comment "${{ inputs.pr }}" --body "$(printf '**%s** deployment: %s\n\n%s' "$ENVIRONMENT" "$URL" "$REPORT")"
+          else echo "url=$URL" >> "$GITHUB_OUTPUT"; fi
 
       - name: Incident issue
         if: steps.gate.outputs.decision == 'rollback'
@@ -168,7 +146,7 @@ jobs:
           REPORT: ${{ steps.gate.outputs.report }}
           URL: ${{ steps.deploy.outputs.url }}
         run: |
-          gh issue create --title "Deploy blocked by health gate: ${ENVIRONMENT} @ ${GITHUB_SHA::7}" \
+          gh issue create --title "Deploy blocked by health gate: ${ENVIRONMENT} @ ${SHA::7}" \
             --label incident --body "$(printf 'The new release (%s) failed the health gate. Traffic stayed on the previous release.\n\n%s\n\nRun: %s/%s/actions/runs/%s' "$URL" "$REPORT" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")" \
             || gh issue create --title "Deploy blocked by health gate: ${ENVIRONMENT}" --body "$REPORT"
           exit 1

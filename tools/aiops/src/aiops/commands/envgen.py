@@ -2,8 +2,8 @@
 
 A developer writes infra/terraform/environments/<name>.intent.yaml in plain terms ("cost-sensitive
 staging, EU, ~5 rps"). The model proposes sizing; policy clamps it to the allowed
-envelope and budget; the result is written as Terraform tfvars + Helm values and
-opened as a PR, so a human reviews generated infra like any other code.
+envelope and budget; the result is written as Terraform tfvars + Helm values
+(`make envgen`) and committed through a normal reviewed PR.
 """
 
 from __future__ import annotations

@@ -68,14 +68,15 @@ resource "azurerm_private_dns_zone_virtual_network_link" "db" {
 }
 
 resource "azurerm_kubernetes_cluster" "this" {
-  name                      = var.name
-  location                  = azurerm_resource_group.this.location
-  resource_group_name       = azurerm_resource_group.this.name
-  dns_prefix                = var.name
-  sku_tier                  = module.size.db_ha ? "Standard" : "Free"
-  oidc_issuer_enabled       = true
-  workload_identity_enabled = true
-  tags                      = local.tags
+  name                              = var.name
+  location                          = azurerm_resource_group.this.location
+  resource_group_name               = azurerm_resource_group.this.name
+  dns_prefix                        = var.name
+  sku_tier                          = module.size.db_ha ? "Standard" : "Free"
+  oidc_issuer_enabled               = true
+  role_based_access_control_enabled = true
+  workload_identity_enabled         = true
+  tags                              = local.tags
 
   default_node_pool {
     name                 = "system"

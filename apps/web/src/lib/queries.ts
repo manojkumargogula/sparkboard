@@ -13,9 +13,9 @@ import {
 import { api } from "./api";
 import type { Comment, FeedParams, Idea, IdeaDraft } from "./types";
 
-export const PAGE_SIZE = 20;
+const PAGE_SIZE = 20;
 
-export const keys = {
+const keys = {
   feed: (p: FeedParams) => ["ideas", "feed", p] as const,
   feeds: ["ideas", "feed"] as const,
   idea: (id: number) => ["ideas", "one", id] as const,

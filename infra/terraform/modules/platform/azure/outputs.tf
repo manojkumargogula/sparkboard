@@ -1,4 +1,4 @@
-# Platform contract (see infra/terraform/README.md). Identical names on every cloud.
+# Platform contract (see docs/deployment.md). Identical names on every cloud.
 
 output "cluster_name" { value = azurerm_kubernetes_cluster.this.name }
 output "kube_host" { value = azurerm_kubernetes_cluster.this.kube_config[0].host }

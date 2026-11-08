@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-export interface ComposerContextValue {
+interface ComposerContextValue {
   openComposer: () => void;
 }
 

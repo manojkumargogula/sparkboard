@@ -103,9 +103,9 @@ jobs:
           TF_VAR_image_tag: ${{ env.TAG }}
           TF_VAR_ai_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
-        # infra/environments/generated/<env>.tfvars is written by the AI env-config workflow (and reviewed in a PR).
+        # infra/terraform/environments/generated/<env>.tfvars is written by the AI env-config workflow (and reviewed in a PR).
         run: |
-          varfile="../../../environments/generated/${{ inputs.environment }}.tfvars"
+          varfile="../../environments/generated/${{ inputs.environment }}.tfvars"
           if [ -f "$varfile" ]; then
             terraform apply -input=false -auto-approve -var-file="$varfile"
           else

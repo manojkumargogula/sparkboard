@@ -36,7 +36,7 @@ jobs:
             api: ['apps/api/**', 'infra/docker/api.Dockerfile', 'requirements.txt']
             web: ['apps/web/**', 'infra/docker/web.Dockerfile', 'infra/docker/nginx.conf']
             aiops: ['tools/aiops/**']
-            iac: ['infra/terraform/**', 'infra/helm/**', 'infra/environments/**']
+            iac: ['infra/terraform/**', 'infra/helm/**']
 
   api:
     needs: changes

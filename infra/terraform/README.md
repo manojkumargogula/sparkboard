@@ -9,6 +9,8 @@ modules/
   app/               cloud-neutral: namespace + secret + Helm release of infra/helm/sparkboard
   vercel/            Vercel project + env + domain, Neon Postgres (the live deployment)
 stacks/<target>/     thin roots: provider auth + platform + app. Only tfvars differ.
+environments/        per-environment settings: <env>.intent.yaml + policy.yaml →
+                     generated/<env>.tfvars (stack inputs) + <env>.values.yaml (Helm replicas)
 ```
 
 ## Platform contract

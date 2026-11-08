@@ -13,7 +13,6 @@
 .shots
 infra/terraform
 infra/helm
-infra/environments
 docs
 **/.env
 **/.env.*

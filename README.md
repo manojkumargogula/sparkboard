@@ -40,12 +40,16 @@ docker-compose.yml, Makefile                   local stack and command entry poi
 
 ## Documentation
 
+AI coding agents: start with [AGENTS.md](AGENTS.md).
+
+
 | Doc | What's in it |
 |---|---|
 | [Product](docs/product.md) | features and tech stack |
 | [Architecture](docs/architecture.md) | system diagram, API layers, data model, security, trade-offs |
 | [Development](docs/development.md) | run locally, make targets, tests, migrations |
 | [CI and code scanning](docs/ci.md) | what every PR is checked for, and how to handle a finding |
+| [Code quality](docs/code-quality.md) | coding standards, naming, branch and commit conventions |
 | [Deployment](docs/deployment.md) | the Vercel pipeline, plus Terraform for Kubernetes on AWS / GCP / Azure |
 | [AI operations](docs/ai-ops.md) | the deploy health gate and AI environment sizing |
 

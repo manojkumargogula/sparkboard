@@ -55,10 +55,10 @@ tf-validate: ## Check every Terraform stack (no cloud credentials needed)
 	  terraform -chdir=infra/terraform/stacks/$$stack validate || exit 1; \
 	done
 
-envgen: ## Regenerate environment configs from infra/environments/*.intent.yaml
+envgen: ## Regenerate environment configs from infra/terraform/environments/*.intent.yaml
 	cd $(AIOPS) && for env in staging production; do \
-	  uv run aiops envgen --intent ../../infra/environments/$$env.intent.yaml \
-	    --policy ../../infra/environments/policy.yaml --out-dir ../../infra/environments/generated; \
+	  uv run aiops envgen --intent ../../infra/terraform/environments/$$env.intent.yaml \
+	    --policy ../../infra/terraform/environments/policy.yaml --out-dir ../../infra/terraform/environments/generated; \
 	done
 
 .PHONY: help install up down dev lint test-db test e2e check tf-validate envgen

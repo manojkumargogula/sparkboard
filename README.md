@@ -80,8 +80,8 @@ docker-compose.yml   local stack: db → api (runs migrations first) → web
 infra/               everything that builds, ships or provisions the app (see infra/README.md)
   docker/            api + web Dockerfiles (multi-stage, non-root), nginx template
   helm/sparkboard/   one chart for every cluster; values/<cloud>.yaml holds the small differences
-  terraform/         modules (sizing · platform/{aws,gcp,azure} · app · vercel) + thin stacks/<target> roots
-  environments/      plain-language environment intents + guardrail policy + generated configs
+  terraform/         modules/ (sizing · platform/{aws,gcp,azure} · app · vercel), stacks/<target>,
+                     environments/ (intents + guardrail policy + generated tfvars and Helm values)
 tools/aiops/         the AI delivery toolkit used by the workflows (typed, tested, policy-guarded)
 .github/workflows/   ci · ai-review · chatops · deploy-vercel · deploy-k8s · ai-env-config · codeql
 ```
@@ -153,7 +153,7 @@ When any CI job fails on a PR, the **AI failure explainer** posts the probable c
 | `chatops.yml` | PR comment `/deploy`, `/rollback`, `/plan` | AI plans, policy corrects, then calls the deploy workflow |
 | `deploy-vercel.yml` | push to `main`, dispatch, ChatOps | CI → migrate → deploy without moving the domain → probe → AI health gate → promote or block + incident |
 | `deploy-k8s.yml` | dispatch, ChatOps | OIDC login → build/push → `terraform apply` (atomic Helm) → probe → AI health gate → `helm rollback` |
-| `ai-env-config.yml` | change to `infra/environments/*.intent.yaml` | intent → AI sizing → policy clamp → tfvars + Helm values PR |
+| `ai-env-config.yml` | change to `infra/terraform/environments/*.intent.yaml` | intent → AI sizing → policy clamp → tfvars + Helm values PR |
 | `codeql.yml` | PR, push, weekly | static security analysis |
 
 ### Deploy to Vercel (the live target)
@@ -209,11 +209,11 @@ The plan is posted as a table on the PR, then executed by reviewed workflow step
 
 ### 2. Intent → environment config (generative IaC with guardrails)
 
-`infra/environments/staging.intent.yaml` describes the need, not the build: *"Cost-sensitive staging for QA and demos, best-effort, $300/month, ~3 rps"*. `aiops envgen` asks Claude for sizing (size preset + replica ranges + rationale), then:
+`infra/terraform/environments/staging.intent.yaml` describes the need, not the build: *"Cost-sensitive staging for QA and demos, best-effort, $300/month, ~3 rps"*. `aiops envgen` asks Claude for sizing (size preset + replica ranges + rationale), then:
 
-- clamps it to `infra/environments/policy.yaml` (allowed sizes, replica caps, ≥2 replicas for critical);
+- clamps it to `infra/terraform/environments/policy.yaml` (allowed sizes, replica caps, ≥2 replicas for critical);
 - walks the size down until a deterministic cost estimate fits the budget;
-- writes `infra/environments/generated/<env>.tfvars` + `<env>.values.yaml`, which the Terraform roots consume.
+- writes `infra/terraform/environments/generated/<env>.tfvars` + `<env>.values.yaml`, which the Terraform roots consume.
 
 `ai-env-config.yml` opens the result as a **PR**, so generated infrastructure is reviewed like any other code. *Value:* developers say "cost-sensitive staging" or "HA production for launch" and get a reviewed, budget-checked config. Today's generated output is `staging → small, ~$204/mo` and `production → ha, ≥2 replicas per tier, ~$1,472/mo`.
 

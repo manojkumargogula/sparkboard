@@ -1,26 +1,19 @@
-# syntax=docker/dockerfile:1.7
-# Sparkboard web: static Vite build served by unprivileged nginx, which also
-# reverse-proxies /api to the API so the browser sees a single origin.
-
+# Build: compile the React app into /app/dist
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY apps/web/package.json apps/web/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+RUN npm ci
 COPY apps/web ./
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
-LABEL org.opencontainers.image.title="sparkboard-web" \
-      org.opencontainers.image.source="https://github.com/manojkumargogula/sparkboard" \
-      org.opencontainers.image.licenses="MIT"
-# The nginx image renders /etc/nginx/templates/*.template with envsubst at start.
+# Run: serve it with nginx (which also proxies /api to the API)
+FROM nginxinc/nginx-unprivileged:1.29-alpine
 ENV API_UPSTREAM=http://api:8000
-# The base image lags Alpine security fixes; patch at build time.
-USER 0
+# Install OS security fixes the base image doesn't have yet
+USER root
 # hadolint ignore=DL3017
 RUN apk upgrade --no-cache
-COPY infra/docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY infra/docker/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 USER 101
 EXPOSE 8080
-HEALTHCHECK --interval=15s --timeout=3s CMD ["wget", "-qO-", "http://127.0.0.1:8080/nginx-health"]

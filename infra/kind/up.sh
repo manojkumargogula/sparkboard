@@ -1,39 +1,26 @@
 #!/usr/bin/env bash
-# Prove the Helm chart on a local Kubernetes cluster: kind + ingress-nginx +
-# in-cluster Postgres + the exact images CI builds. Idempotent.
+# Run Sparkboard on a local Kubernetes cluster (kind) → http://localhost:8088
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-CLUSTER=sparkboard
-NS=sparkboard
-CTX="kind-${CLUSTER}"
-k() { kubectl --context "$CTX" "$@"; }
+# 1. Cluster + ingress controller
+kind create cluster --name sparkboard --config infra/kind/cluster.yaml || true
+kubectl config use-context kind-sparkboard   # never touch any other cluster
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
+kubectl -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeout=180s
 
-kind get clusters | grep -qx "$CLUSTER" || kind create cluster --config infra/kind/cluster.yaml
+# 2. Build the images and load them into the cluster
+docker build -t sparkboard-api:local -f infra/docker/api.Dockerfile .
+docker build -t sparkboard-web:local -f infra/docker/web.Dockerfile .
+kind load docker-image sparkboard-api:local sparkboard-web:local --name sparkboard
 
-echo "› ingress-nginx"
-k apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml >/dev/null
-k -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeout=180s
+# 3. Postgres inside the cluster
+kubectl create namespace sparkboard || true
+kubectl -n sparkboard apply -f infra/kind/postgres.yaml
+kubectl -n sparkboard rollout status statefulset/postgres --timeout=120s
 
-echo "› images"
-docker build -q -t sparkboard-api:local -f infra/docker/api.Dockerfile . >/dev/null
-docker build -q -t sparkboard-web:local -f infra/docker/web.Dockerfile . >/dev/null
-kind load docker-image sparkboard-api:local sparkboard-web:local --name "$CLUSTER"
+# 4. The app
+helm upgrade --install sparkboard infra/helm/sparkboard -n sparkboard \
+  -f infra/helm/sparkboard/values/kind.yaml --wait --timeout 5m
 
-echo "› postgres"
-k create namespace "$NS" --dry-run=client -o yaml | k apply -f - >/dev/null
-k -n "$NS" apply -f infra/kind/postgres.yaml >/dev/null
-k -n "$NS" rollout status statefulset/postgres --timeout=120s
-
-echo "› helm"
-helm --kube-context "$CTX" upgrade --install sparkboard infra/helm/sparkboard \
-  -n "$NS" -f infra/helm/sparkboard/values/kind.yaml --wait --timeout 5m
-
-echo "› smoke"
-for i in $(seq 1 30); do
-  curl -fsS http://localhost:8088/api/readyz >/dev/null 2>&1 && break
-  sleep 2
-done
-curl -fsS http://localhost:8088/api/readyz
-echo
 echo "Sparkboard is up on http://localhost:8088"

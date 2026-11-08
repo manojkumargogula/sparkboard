@@ -34,7 +34,7 @@ jobs:
         with:
           filters: |
             api: ['apps/api/**', 'infra/docker/api.Dockerfile', 'requirements.txt']
-            web: ['apps/web/**', 'infra/docker/web.Dockerfile', 'infra/docker/nginx/**']
+            web: ['apps/web/**', 'infra/docker/web.Dockerfile', 'infra/docker/nginx.conf']
             aiops: ['tools/aiops/**']
             iac: ['infra/terraform/**', 'infra/helm/**', 'infra/kind/**', 'infra/environments/**']
 
@@ -123,7 +123,7 @@ jobs:
       - name: Start the stack (docker compose)
         run: |
           docker compose up -d --build --wait
-          docker compose --profile seed run --rm seed
+          docker compose exec -T api python -m sparkboard_api.seed
       - uses: actions/setup-node@v4
         with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: apps/web/package-lock.json }
       - name: Playwright

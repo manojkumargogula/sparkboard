@@ -54,7 +54,7 @@ def test_policy_overrides_an_overreaching_ai_plan() -> None:
 
 def test_render_mentions_approval(offline: FakeLLM) -> None:
     md = plan.render(plan.make_plan("/deploy production", offline))
-    assert "Waiting for a reviewer" in md
+    assert "after a reviewer approves" in md
     assert "rules (AI unavailable)" in md
 
 

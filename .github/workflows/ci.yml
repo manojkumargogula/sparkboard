@@ -206,8 +206,18 @@ jobs:
         with: { terraform_version: "${{ env.TF_VERSION }}" }
       - name: Terraform fmt
         run: terraform fmt -check -recursive infra/terraform
+      # Providers come from GitHub release downloads, which hit 5xx often enough to fail CI.
+      # Cache them across runs, keyed on the lock files.
+      - name: Cache Terraform providers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-providers-${{ hashFiles('infra/terraform/stacks/*/.terraform.lock.hcl') }}
       - name: Terraform validate (every stack)
+        env:
+          TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
         run: |
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
           for stack in aws gcp azure vercel; do
             # Provider downloads occasionally hit registry/GitHub 5xx: retry before failing.
             for attempt in 1 2 3; do

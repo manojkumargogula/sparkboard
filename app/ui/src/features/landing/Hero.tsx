@@ -43,7 +43,8 @@ export function Hero() {
             className="mt-8 max-w-xl text-xl leading-relaxed text-paper/80"
           >
             A public board for ideas worth building. Post yours, vote for the ones you want, and
-            follow them from spark to shipped. No sign-up.
+            follow them from spark to shipped. Reading is open; one tap with Google to post and
+            vote.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 12 }}

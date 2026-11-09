@@ -37,7 +37,7 @@ Run the same lint, type and test steps locally with `make check`.
 ## Supply-chain hardening
 
 - Every action is pinned to a full commit SHA (the tag is kept in a comment); Dependabot updates the pins.
-- Dependabot waits 7 days before proposing a new release, which avoids most compromised packages (they are usually yanked within days).
+- Dependabot runs **monthly** with **one grouped PR per ecosystem** (UI, backend, aiops, Docker, Terraform, Actions), minor and patch versions only, and waits 7 days before proposing a new release, which avoids most compromised packages (they are usually yanked within days). Security fixes still arrive through Dependabot security alerts.
 - Each job gets only the `permissions` it needs; secrets are scoped to the deploy job, not the whole workflow.
 
 ## When a scanner flags something

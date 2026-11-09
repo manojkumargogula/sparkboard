@@ -13,6 +13,7 @@ from tests.conftest import FakeLLM
 @pytest.fixture(autouse=True)
 def _env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
     out = tmp_path / "gh_output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(out))
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary.md"))

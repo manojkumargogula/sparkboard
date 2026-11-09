@@ -16,7 +16,7 @@
 3. Run database migrations (direct, non-pooled connection). They run before traffic shifts, so they must be backward compatible.
 4. Deploy production **without moving the domain** (`--skip-domain`).
 5. Probe the new deployment and collect its logs.
-6. Health gate: SLO thresholds, then Claude reads metrics and logs (see [ai-ops.md](ai-ops.md)).
+6. Health gate: SLO thresholds, then the model (GLM via NVIDIA) reads metrics and logs (see [ai-ops.md](ai-ops.md)).
 7. Pass: `vercel promote` moves the domain with zero downtime. Fail: traffic stays on the old release and an incident issue is opened.
 
 ### One-time setup
@@ -29,7 +29,7 @@
    |---|---|
    | secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Vercel CLI from Actions |
    | secrets `DATABASE_URL_UNPOOLED`, `PREVIEW_DATABASE_URL_UNPOOLED` | migrations |
-   | secret `ANTHROPIC_API_KEY` *(optional)* | AI part of the health gate; without it the SLOs alone decide |
+   | secret `NVIDIA_API_KEY` *(optional)* | GLM for the AI health gate and other AI features; without it the rules decide. `ANTHROPIC_API_KEY` switches to Claude |
    | secret `VERCEL_AUTOMATION_BYPASS_SECRET` *(optional)* | lets probes reach protected preview URLs |
    | variable `PUBLIC_URL` | `https://ideas.infrenic.com` |
    | environment `production` | required reviewers: the human approval before production |

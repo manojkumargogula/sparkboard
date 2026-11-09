@@ -131,7 +131,7 @@ Four GitHub Actions workflows:
 
 1. **Create the project and database.** Apply `infra/terraform/stacks/vercel` (needs `VERCEL_API_TOKEN` and `NEON_API_KEY`), or by hand: `vercel link`, then add Neon Postgres from the Vercel Marketplace.
 2. **Set Vercel env vars** (Production and Preview): `DATABASE_URL` (pooled), `DB_SERVERLESS=true`, `ENVIRONMENT`, `ADMIN_TOKEN`, `GOOGLE_CLIENT_ID`, `AUTH_REQUIRED=true`, and optionally `AI_PROVIDER=anthropic` + `AI_API_KEY`.
-3. **Set GitHub secrets:** `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `DATABASE_URL_UNPOOLED`, `PREVIEW_DATABASE_URL_UNPOOLED`, `ANTHROPIC_API_KEY`. Set the repository variable `PUBLIC_URL`, and create a GitHub environment `production` with required reviewers (the human approval gate).
+3. **Set GitHub secrets:** `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `DATABASE_URL_UNPOOLED`, `PREVIEW_DATABASE_URL_UNPOOLED`, `NVIDIA_API_KEY` (AI features; `ANTHROPIC_API_KEY` works instead). Set the repository variable `PUBLIC_URL`, and create a GitHub environment `production` with required reviewers (the human approval gate).
 4. **Ship.** Merge to `main` (CI runs, then the deploy), or comment `/deploy preview` or `/deploy production` on a PR.
 
 ### Deploy to Kubernetes (AWS, GCP or Azure)
@@ -154,15 +154,15 @@ Full setup details: [docs/deployment.md](docs/deployment.md).
 ## AI integration
 
 > **Design rule: the model proposes, deterministic code decides.**
-> Every AI answer is a typed object, validated by a Pydantic schema through Claude's structured outputs. Policy code then checks it and can correct or override it. When the model is unavailable, every feature falls back to rules. AI can make the pipeline smarter, but it can never make it unsafe, and an AI outage never blocks a deploy or a rollback.
+> Every AI answer is a typed object, validated against a Pydantic schema. Policy code then checks it and can correct or override it. When the model is unavailable, every feature falls back to rules. AI can make the pipeline smarter, but it can never make it unsafe, and an AI outage never blocks a deploy or a rollback.
 
 All of it lives in [`tools/aiops`](tools/aiops): one small, typed package (mypy strict, 96 % test coverage) with a single LLM adapter, shared by every workflow.
 
-> **Running without a model.** The AI calls need an `ANTHROPIC_API_KEY` repository secret. This repository currently has none, so every feature runs on its deterministic fallback (path-based risk rules, keyword ChatOps planning, rule-based sizing, SLO-only health gate). Adding the secret switches them to Claude with no code change.
+> **Which model.** The pipeline runs on **GLM 5.3 Flash (`z-ai/glm-5.3-flash`) through NVIDIA's OpenAI-compatible API**, using the `NVIDIA_API_KEY` repository secret. The model is asked for JSON matching each schema and the reply is validated; anything invalid falls back to rules. The adapter (`tools/aiops/src/aiops/llm.py`) also supports Claude (`ANTHROPIC_API_KEY`) or any OpenAI-compatible endpoint (`AIOPS_PROVIDER`, `AIOPS_BASE_URL`, `AIOPS_MODEL`), and with no key every feature runs on its deterministic fallback.
 
 ### 1. ChatOps deploy planner (AI-assisted command generation)
 
-A PR comment such as `/deploy on gcp`, `/deploy preview` or `/rollback production` becomes a typed `DeployPlan`: an environment, a target and an ordered list of **allow-listed actions** (`build, test, migrate, deploy, smoke, health_gate, promote, rollback`). The model never writes shell. Policy code then:
+A PR comment such as `/deploy on gcp`, `/deploy preview` or `/rollback production` is turned by the model into a typed `DeployPlan`: an environment, a target and an ordered list of **allow-listed actions** (`build, test, migrate, deploy, smoke, health_gate, promote, rollback`). The model never writes shell. Policy code then:
 
 - overrides the environment or target if the model misread what the human literally typed;
 - keeps environments to what exists: `preview` only on Vercel, and a single `production` environment on AWS, GCP and Azure;
@@ -173,7 +173,7 @@ The plan is posted on the PR, then the matching deploy workflow executes it with
 
 ### 2. Dynamic environment configuration (generative IaC with guardrails)
 
-There is **one environment, `production`, deployed the same way to AWS, GCP and Azure.** `infra/terraform/environments/production.intent.yaml` describes the need, not the build: *"high-availability production for a public launch, survive a zone outage, $2,500/month, ~120 rps"*. `aiops envgen` asks Claude for sizing (size preset, replica ranges, rationale), then:
+There is **one environment, `production`, deployed the same way to AWS, GCP and Azure.** `infra/terraform/environments/production.intent.yaml` describes the need, not the build: *"high-availability production for a public launch, survive a zone outage, $2,500/month, ~120 rps"*. `aiops envgen` asks the model for sizing (size preset, replica ranges, rationale), then:
 
 - clamps it to `policy.yaml` (allowed sizes, replica caps, at least 2 replicas for critical availability);
 - steps the size down until a deterministic cost estimate fits the budget **on the most expensive of the three clouds**;
@@ -186,10 +186,10 @@ There is **one environment, `production`, deployed the same way to AWS, GCP and 
 After every deploy, `aiops smoke` probes the new release (read-only, error rate, p50/p95) and the previous one for a baseline, and the workflow collects runtime logs. `aiops health` decides:
 
 1. **SLOs first, no AI:** error rate ≤ 1 %, p95 latency ceiling, p95 no more than 1.5× the previous release. Any breach means rollback.
-2. **Claude reads the metrics and logs** for what thresholds miss: a new exception type, a database pool warning, one slow endpoint. It can only roll back when it is at least 80 % confident.
+2. **The model reads the metrics and logs** for what thresholds miss: a new exception type, a database pool warning, one slow endpoint. It can only roll back when it is at least 80 % confident.
 3. **AI down → the SLOs alone decide.**
 
-On Vercel, production is deployed **without moving the domain** and promoted only if the gate passes, so a bad release never takes user traffic. On Kubernetes the Helm release is atomic, and a failed gate runs `helm rollback`. Either way the pipeline opens an incident issue with Claude's plain-English summary and suspected cause. *Value:* fewer bad releases reach users, and the on-call engineer gets a diagnosis instead of a log dump.
+On Vercel, production is deployed **without moving the domain** and promoted only if the gate passes, so a bad release never takes user traffic. On Kubernetes the Helm release is atomic, and a failed gate runs `helm rollback`. Either way the pipeline opens an incident issue with the model's plain-English summary and suspected cause. *Value:* fewer bad releases reach users, and the on-call engineer gets a diagnosis instead of a log dump.
 
 ### 4. AI PR review with a risk score
 
@@ -197,7 +197,7 @@ Every PR diff gets a structured review (findings per file, risk reasons, suggest
 
 ### 5. CI failure explainer
 
-When a CI job fails on a PR, the failed log goes to Claude, which posts the failing step, the probable cause and a concrete fix as a sticky comment. Without AI it falls back to the first error line.
+When a CI job fails on a PR, the failed log goes to the model, which posts the failing step, the probable cause and a concrete fix as a sticky comment. Without AI it falls back to the first error line.
 
 ### 6. In the product
 

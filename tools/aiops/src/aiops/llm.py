@@ -1,46 +1,112 @@
 """One narrow door to the model.
 
-Every call returns a pydantic object or raises ``LLMUnavailable``. Callers MUST
+Every call returns a pydantic object or raises ``LLMUnavailableError``. Callers MUST
 have a deterministic fallback, so an AI outage can slow the pipeline down but
 never block a deploy or a rollback.
+
+Providers (picked from the environment, or forced with ``AIOPS_PROVIDER``):
+
+- ``anthropic``: Claude with native structured outputs (``ANTHROPIC_API_KEY``).
+- ``nvidia``: any OpenAI-compatible endpoint, by default NVIDIA's API catalog
+  serving GLM (``NVIDIA_API_KEY``). The model is asked for JSON matching the
+  schema, and the reply is validated against it.
+- neither key set: disabled, so every feature uses its rules.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from typing import Literal, TypeVar
 
 import anthropic
+import httpx
 from anthropic.types.beta import BetaOutputConfigParam
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 T = TypeVar("T", bound=BaseModel)
 Effort = Literal["low", "medium", "high"]
+Provider = Literal["anthropic", "nvidia"]
 
-DEFAULT_MODEL = "claude-opus-5-5"
+DEFAULT_MODELS: dict[Provider, str] = {
+    "anthropic": "claude-opus-5-5",
+    "nvidia": "z-ai/glm-5.3-flash",
+}
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
+_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
 
 
 class LLMUnavailableError(RuntimeError):
     """No key, provider error, refusal or unparseable output."""
 
 
+def _pick_provider() -> tuple[Provider | None, str]:
+    forced = os.environ.get("AIOPS_PROVIDER", "").strip().lower()
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
+    if forced == "nvidia" or (forced != "anthropic" and not anthropic_key and nvidia_key):
+        return ("nvidia", nvidia_key) if nvidia_key else (None, "")
+    if anthropic_key:
+        return "anthropic", anthropic_key
+    return None, ""
+
+
+def extract_json(text: str) -> str:
+    """Pull the JSON object out of a chat reply (drops reasoning and code fences)."""
+    cleaned = _FENCE.sub("", _THINK.sub("", text).strip()).strip()
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start < 0 or end <= start:
+        raise LLMUnavailableError("model reply contained no JSON object")
+    return cleaned[start : end + 1]
+
+
 class LLM:
-    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
-        key = api_key if api_key is not None else os.environ.get("ANTHROPIC_API_KEY", "")
-        self.model = model or os.environ.get("AIOPS_MODEL", DEFAULT_MODEL)
-        self._client = anthropic.Anthropic(api_key=key, max_retries=2) if key else None
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        provider: Provider | None = None,
+        http: httpx.Client | None = None,
+    ) -> None:
+        self.provider: Provider | None
+        if api_key is not None:  # explicit key: tests and callers that know the provider
+            self.provider = (provider or "anthropic") if api_key else None
+            key = api_key
+        else:
+            self.provider, key = _pick_provider()
+        default = DEFAULT_MODELS[self.provider] if self.provider else ""
+        self.model = model or os.environ.get("AIOPS_MODEL") or default
+        self._anthropic: anthropic.Anthropic | None = None
+        self._http: httpx.Client | None = None
+        if self.provider == "anthropic":
+            self._anthropic = anthropic.Anthropic(api_key=key, max_retries=2)
+        elif self.provider == "nvidia":
+            self._http = http or httpx.Client(
+                base_url=os.environ.get("AIOPS_BASE_URL", NVIDIA_BASE_URL),
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=90,
+            )
 
     @property
     def enabled(self) -> bool:
-        return self._client is not None
+        return self.provider is not None
 
     def structured(self, system: str, prompt: str, schema: type[T], effort: Effort = "medium") -> T:
-        if self._client is None:
-            raise LLMUnavailableError("ANTHROPIC_API_KEY is not set")
+        if self._anthropic is not None:
+            return self._anthropic_structured(self._anthropic, system, prompt, schema, effort)
+        if self._http is not None:
+            return self._openai_structured(self._http, system, prompt, schema)
+        raise LLMUnavailableError("no model configured (set NVIDIA_API_KEY or ANTHROPIC_API_KEY)")
+
+    def _anthropic_structured(
+        self, client: anthropic.Anthropic, system: str, prompt: str, schema: type[T], effort: Effort
+    ) -> T:
         config: BetaOutputConfigParam = {"effort": effort}
         try:
-            response = self._client.beta.messages.parse(
+            response = client.beta.messages.parse(
                 model=self.model,
                 max_tokens=16000,
                 system=system,
@@ -55,3 +121,31 @@ class LLM:
         if response.stop_reason == "refusal" or response.parsed_output is None:
             raise LLMUnavailableError("model declined or returned no structured output")
         return response.parsed_output
+
+    def _openai_structured(
+        self, client: httpx.Client, system: str, prompt: str, schema: type[T]
+    ) -> T:
+        contract = (
+            "\n\nReply with ONE JSON object and nothing else (no prose, no code fences). "
+            "It must validate against this JSON Schema:\n"
+            + json.dumps(schema.model_json_schema(), separators=(",", ":"))
+        )
+        body = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system + contract},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+            "max_tokens": 4096,
+        }
+        try:
+            response = client.post("/chat/completions", json=body)
+            response.raise_for_status()
+            text = response.json()["choices"][0]["message"]["content"] or ""
+        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+            raise LLMUnavailableError(f"model call failed: {exc}") from exc
+        try:
+            return schema.model_validate_json(extract_json(text))
+        except ValidationError as exc:
+            raise LLMUnavailableError(f"model output did not match the schema: {exc}") from exc

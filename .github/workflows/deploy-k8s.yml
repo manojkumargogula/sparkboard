@@ -21,6 +21,7 @@ on:
       rollback: { type: boolean, required: false, default: false }
     secrets:
       ANTHROPIC_API_KEY: { required: false }
+      NVIDIA_API_KEY: { required: false }
 
 permissions:
   contents: read
@@ -126,6 +127,7 @@ jobs:
         working-directory: tools/aiops
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: uv run --frozen aiops health --current ../../current.json --logs ../../runtime.log
 
       - name: Automatic rollback

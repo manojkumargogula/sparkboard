@@ -2,7 +2,7 @@ import json
 
 import httpx
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from aiops import llm as llm_mod
 from aiops.llm import LLM, LLMUnavailableError, extract_json
@@ -72,3 +72,32 @@ def test_streamed_reply_is_assembled() -> None:
 
     out = nvidia(httpx.MockTransport(handle)).structured("s", "p", Verdict)
     assert out == Verdict(healthy=False, confidence=0.85)
+
+
+class Short(BaseModel):
+    reasons: list[str] = Field(max_length=2)
+    summary: str = Field(max_length=5)
+    healthy: bool
+
+
+def test_overlong_fields_are_trimmed_but_wrong_types_still_fail() -> None:
+    raw = '{"reasons": ["a", "b", "c"], "summary": "too long", "healthy": true}'
+    out = llm_mod.validate_lenient(Short, raw)
+    assert out == Short(reasons=["a", "b"], summary="too l", healthy=True)
+    with pytest.raises(ValueError):
+        llm_mod.validate_lenient(Short, '{"reasons": [], "summary": "x", "healthy": "maybe"}')
+
+
+def test_one_repair_round_fixes_a_bad_reply() -> None:
+    replies = iter(
+        ['{"healthy": "maybe", "confidence": 0.5}', '{"healthy": false, "confidence": 0.5}']
+    )
+    seen: list[int] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(len(json.loads(request.content)["messages"]))
+        return httpx.Response(200, json={"choices": [{"message": {"content": next(replies)}}]})
+
+    out = nvidia(httpx.MockTransport(handle)).structured("s", "p", Verdict)
+    assert out == Verdict(healthy=False, confidence=0.5)
+    assert seen == [2, 4]  # second call carries the bad answer and the errors

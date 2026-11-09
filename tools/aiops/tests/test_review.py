@@ -1,3 +1,5 @@
+import pytest
+
 from aiops.commands import review
 from tests.conftest import FakeLLM
 
@@ -65,3 +67,10 @@ def test_model_diff_keeps_code_and_lists_the_rest() -> None:
     shown, omitted = review.model_diff(code + docs + lock + big, limit=200)
     assert shown == code
     assert omitted == ["docs/a.md", "app/ui/package-lock.json", "app/ui/big.ts"]
+
+
+def test_finding_severity_maps_risk_words_but_rejects_nonsense() -> None:
+    assert review.Finding(file="a", severity="high", message="m").severity == "blocker"
+    assert review.Finding(file="a", severity="Medium", message="m").severity == "warning"
+    with pytest.raises(ValueError):
+        review.Finding(file="a", severity="urgent", message="m")

@@ -108,7 +108,7 @@ There is a unique constraint on `votes(idea_id, author_id)`. The `pg_trgm` GIN i
 ```mermaid
 sequenceDiagram
   participant GH as GitHub Actions
-  participant AI as aiops (Claude)
+  participant AI as aiops (GLM via NVIDIA)
   participant V as Vercel
   participant N as Neon
 

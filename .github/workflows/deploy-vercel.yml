@@ -33,6 +33,7 @@ on:
       DATABASE_URL_UNPOOLED: { required: false }
       PREVIEW_DATABASE_URL_UNPOOLED: { required: false }
       ANTHROPIC_API_KEY: { required: false }
+      NVIDIA_API_KEY: { required: false }
       VERCEL_AUTOMATION_BYPASS_SECRET: { required: false }
 
 permissions:
@@ -137,6 +138,7 @@ jobs:
         working-directory: tools/aiops
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
           uv run aiops health --current ../../current.json --baseline ../../baseline.json \
             --logs ../../runtime.log --max-error-rate 0.01 --max-p95-ms 2500

@@ -68,6 +68,30 @@ def extract_json(text: str) -> str:
     return cleaned[start : end + 1]
 
 
+_TOO_LONG = {"too_long", "string_too_long"}
+
+
+def validate_lenient[M: BaseModel](schema: type[M], raw: str) -> M:
+    """Validate, trimming only over-long lists/strings (the usual JSON-mode overshoot).
+
+    Anything else that breaks the schema still raises, so the caller uses its rules.
+    """
+    data = json.loads(raw)
+    try:
+        return schema.model_validate(data)
+    except ValidationError as exc:
+        errors = exc.errors()
+        if not errors or any(e["type"] not in _TOO_LONG for e in errors):
+            raise
+        for err in errors:
+            *path, last = err["loc"]
+            node = data
+            for key in path:
+                node = node[key]
+            node[last] = node[last][: err["ctx"]["max_length"]]
+        return schema.model_validate(data)
+
+
 class LLM:
     def __init__(
         self,
@@ -141,12 +165,13 @@ class LLM:
             "It must validate against this JSON Schema:\n"
             + json.dumps(schema.model_json_schema(), separators=(",", ":"))
         )
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": system + contract},
+            {"role": "user", "content": prompt},
+        ]
         body: dict[str, object] = {
             "model": self.model,
-            "messages": [
-                {"role": "system", "content": system + contract},
-                {"role": "user", "content": prompt},
-            ],
+            "messages": messages,
             "temperature": 0.2,
             "max_tokens": 4096,
             "stream": True,
@@ -154,16 +179,35 @@ class LLM:
         if os.environ.get("AIOPS_THINKING", "off") != "on":
             # Reasoning models otherwise spend the token budget thinking before answering.
             body["chat_template_kwargs"] = {"enable_thinking": False}
+        text = _complete(client, body)
         try:
-            with client.stream("POST", "/chat/completions", json=body) as response:
-                response.raise_for_status()
-                text = _read_reply(response)
-        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
-            raise LLMUnavailableError(f"model call failed: {exc}") from exc
+            return validate_lenient(schema, extract_json(text))
+        except (ValidationError, ValueError, LLMUnavailableError) as first:
+            # One repair round: show the model its answer and the exact errors.
+            body["messages"] = [
+                *messages,
+                {"role": "assistant", "content": text},
+                {
+                    "role": "user",
+                    "content": "That JSON failed validation:\n"
+                    + str(first)[:2000]
+                    + "\nReturn the corrected JSON object only.",
+                },
+            ]
+            text = _complete(client, body)
         try:
-            return schema.model_validate_json(extract_json(text))
-        except ValidationError as exc:
+            return validate_lenient(schema, extract_json(text))
+        except (ValidationError, ValueError) as exc:
             raise LLMUnavailableError(f"model output did not match the schema: {exc}") from exc
+
+
+def _complete(client: httpx.Client, body: dict[str, object]) -> str:
+    try:
+        with client.stream("POST", "/chat/completions", json=body) as response:
+            response.raise_for_status()
+            return _read_reply(response)
+    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+        raise LLMUnavailableError(f"model call failed: {exc}") from exc
 
 
 def _read_reply(response: httpx.Response) -> str:

@@ -9,10 +9,8 @@ from tests.conftest import FakeLLM
 
 def intent(**kw: object) -> Intent:
     base = {
-        "name": "staging",
-        "cloud": "gcp",
-        "region": "europe-west3",
-        "goal": "cost-sensitive staging",
+        "name": "production",
+        "goal": "cost-sensitive launch",
         "availability": "best-effort",
         "budget_usd_month": 400,
         "expected_rps": 5,
@@ -66,7 +64,7 @@ def test_critical_gets_two_replicas_minimum() -> None:
 
 def test_policy_disallowed_size_and_impossible_budget(offline: FakeLLM) -> None:
     gen = envgen.generate(
-        intent(availability="critical", budget_usd_month=10, cloud="aws"),
+        intent(availability="critical", budget_usd_month=10),
         offline,
         Policy(allowed_sizes=["small", "medium"]),
     )
@@ -75,10 +73,10 @@ def test_policy_disallowed_size_and_impossible_budget(offline: FakeLLM) -> None:
 
 
 def test_write_and_load(tmp_path: Path, offline: FakeLLM) -> None:
-    path = tmp_path / "staging.intent.yaml"
+    path = tmp_path / "production.intent.yaml"
     path.write_text(yaml.safe_dump(intent().model_dump()))
     gen = envgen.generate(envgen.load_intent(path), offline)
     tfvars, values = envgen.write(gen, tmp_path / "out")
     assert 'size        = "small"' in tfvars.read_text()
     assert yaml.safe_load(values.read_text())["api"]["autoscaling"]["enabled"] is True
-    assert "Environment `staging`" in envgen.render(gen)
+    assert "Environment `production`" in envgen.render(gen)

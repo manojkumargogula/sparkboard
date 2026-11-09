@@ -108,7 +108,7 @@ There is a unique constraint on `votes(idea_id, author_id)`. The `pg_trgm` GIN i
 ```mermaid
 sequenceDiagram
   participant GH as GitHub Actions
-  participant AI as aiops (Claude)
+  participant AI as aiops (Nemotron via NVIDIA)
   participant V as Vercel
   participant N as Neon
 
@@ -123,6 +123,28 @@ sequenceDiagram
     GH->>V: vercel promote (domain moves, zero downtime)
   else breach or AI ≥ 0.8 confident it's broken
     GH->>GH: domain never moved · open incident issue with AI summary · fail run
+  end
+```
+
+## Deploy sequence (Kubernetes, any cloud)
+
+```mermaid
+sequenceDiagram
+  participant GH as GitHub Actions
+  participant C as Cloud (OIDC)
+  participant TF as Terraform
+  participant K as Cluster
+  participant AI as aiops
+
+  GH->>C: federated login (no static keys)
+  GH->>C: docker push registry_url/sparkboard-{api,web}:SHA
+  GH->>TF: apply (image_tag=SHA, generated tfvars)
+  TF->>K: helm_release (atomic): migration Job hook → rolling update
+  Note over K: failed rollout ⇒ Helm rolls back by itself
+  GH->>K: probe ingress + kubectl logs
+  GH->>AI: health gate
+  alt unhealthy
+    GH->>K: helm rollback · incident issue
   end
 ```
 

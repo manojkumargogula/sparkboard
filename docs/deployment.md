@@ -3,7 +3,7 @@
 | Target | Status |
 |---|---|
 | **Vercel + Neon** | Live at https://ideas.infrenic.com, deployed by `deploy-vercel.yml` |
-| Kubernetes on AWS / GCP / Azure | Terraform and Helm chart written, validated and scanned in CI; not applied, and there is no deploy workflow for it |
+| Kubernetes on AWS / GCP / Azure | Terraform, Helm chart and `deploy-k8s.yml` written, validated and scanned in CI; not applied yet |
 
 ## Vercel (the live target)
 
@@ -16,7 +16,7 @@
 3. Run database migrations (direct, non-pooled connection). They run before traffic shifts, so they must be backward compatible.
 4. Deploy production **without moving the domain** (`--skip-domain`).
 5. Probe the new deployment and collect its logs.
-6. Health gate: SLO thresholds, then Claude reads metrics and logs (see [ai-ops.md](ai-ops.md)).
+6. Health gate: SLO thresholds, then the model (Nemotron via NVIDIA) reads metrics and logs (see [ai-ops.md](ai-ops.md)).
 7. Pass: `vercel promote` moves the domain with zero downtime. Fail: traffic stays on the old release and an incident issue is opened.
 
 ### One-time setup
@@ -29,7 +29,7 @@
    |---|---|
    | secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Vercel CLI from Actions |
    | secrets `DATABASE_URL_UNPOOLED`, `PREVIEW_DATABASE_URL_UNPOOLED` | migrations |
-   | secret `ANTHROPIC_API_KEY` *(optional)* | AI part of the health gate; without it the SLOs alone decide |
+   | secret `NVIDIA_API_KEY` *(optional)* | the model (NVIDIA API) for the AI health gate and other AI features; without it the rules decide. `ANTHROPIC_API_KEY` switches to Claude |
    | secret `VERCEL_AUTOMATION_BYPASS_SECRET` *(optional)* | lets probes reach protected preview URLs |
    | variable `PUBLIC_URL` | `https://ideas.infrenic.com` |
    | environment `production` | required reviewers: the human approval before production |
@@ -38,9 +38,11 @@
 
 `vercel.json` defines two services in one project: `ui` (root `app/ui`, Vite) and `backend` (root `app/backend`, FastAPI, installed from `uv.lock`). They build and deploy together, so the UI and API can never be out of sync.
 
-## Kubernetes on AWS / GCP / Azure (not applied)
+## Kubernetes on AWS / GCP / Azure (not applied yet)
 
-Apply it by hand when you need it:
+1. **Once per cloud:** create a Terraform state bucket and a GitHub OIDC trust for a deploy identity (IAM role on AWS, Workload Identity Federation on GCP, federated app registration on Azure).
+2. **Repository variables:** `TF_BACKEND_CONFIG` plus `AWS_DEPLOY_ROLE_ARN` + `AWS_REGION`, or `GCP_WIF_PROVIDER` + `GCP_DEPLOY_SA` + `GCP_PROJECT_ID` + `GCP_REGION`, or `AZURE_CLIENT_ID` + `AZURE_TENANT_ID` + `AZURE_SUBSCRIPTION_ID`.
+3. **First apply** by hand:
 
 ```bash
 cd infra/terraform/stacks/azure                 # or aws / gcp
@@ -49,7 +51,9 @@ terraform init -backend-config="bucket=my-tf-state"
 terraform apply -var-file=../../environments/generated/production.tfvars
 ```
 
-This creates the network, managed Kubernetes, managed Postgres and an image registry, then installs the Helm chart. Push the images to the `registry_url` output first, tagged with `image_tag`.
+This creates the network, managed Kubernetes, managed Postgres and an image registry, then installs the Helm chart.
+
+4. **After that, deploy from GitHub:** *Deploy · Kubernetes* in the Actions tab, or a PR comment such as `/deploy on gcp`. The workflow logs in with OIDC, builds and pushes both images, runs `terraform apply` (atomic Helm release), probes the ingress, runs the AI health gate and rolls back with `helm rollback` if it fails. The run summary shows the public URL.
 
 ### Layout
 
@@ -71,10 +75,10 @@ infra/
       app/                namespace + secret + Helm release (no cloud-specific code)
       vercel/             Vercel project + env + domain, Neon Postgres
     stacks/<target>/      what you apply: aws · gcp · azure · vercel
-    environments/         the settings you apply it with
-      <env>.intent.yaml   the need in plain language (budget, SLO, region)
-      policy.yaml         limits the AI sizing must stay within
-      generated/          <env>.tfvars (stack inputs) + <env>.values.yaml (Helm replicas)
+    environments/         one environment (production), shared by every cloud
+      production.intent.yaml   the need in plain language (availability, budget, traffic)
+      policy.yaml              limits the AI sizing must stay within
+      generated/               production.tfvars (size) + production.values.yaml (replicas), cloud-neutral
 ```
 
 ### How it stays cloud-agnostic

@@ -1,43 +1,76 @@
 # AI operations
 
-`tools/aiops` is a small Python CLI with three commands:
+`tools/aiops` is one typed Python CLI shared by every workflow:
 
 | Command | Used by | Does |
 |---|---|---|
-| `aiops smoke` | `deploy-vercel.yml` | read-only probes of a deployment → error rate, p50/p95 latency (JSON) |
-| `aiops health` | `deploy-vercel.yml` | decides promote or block from the probe results, the previous release and the runtime logs |
-| `aiops envgen` | `make envgen` | turns a plain-language environment intent into Terraform tfvars + Helm values |
+| `aiops plan` | `ai.yml` (ChatOps) | PR comment → typed deploy plan of allow-listed steps |
+| `aiops review` | `ai.yml` (review) | PR diff → findings + `risk:*` label, with a floor the model can't lower |
+| `aiops envgen` | `ai.yml` (env-config), `make envgen` | plain-language environment intent → cloud-neutral tfvars + Helm values |
+| `aiops smoke` | deploy workflows | read-only probes of a deployment → error rate, p50/p95 (JSON) |
+| `aiops health` | deploy workflows | SLOs + the model's read of metrics and logs → promote or roll back |
+| `aiops explain` | `ci.yml` | failed CI log → failing step, probable cause, suggested fix |
 
-**Design rule: the model proposes, deterministic code decides.** Every AI answer is a typed object validated by a Pydantic schema. Policy code can correct or override it, and if the model is unavailable each command falls back to rules. The AI can make a decision smarter but can never make it unsafe or block a rollback.
+**Design rule: the model proposes, deterministic code decides.** Every AI answer is a typed object validated against a Pydantic schema. Policy code can correct or override it, and every command falls back to rules when the model is unavailable.
+
+**Model:** NVIDIA Nemotron 3.5 Lightning (`nvidia/nemotron-3.5-lightning-30b-a3b`) via NVIDIA's OpenAI-compatible API, with the `NVIDIA_API_KEY` repository secret. Measured on 2026-11-09 with the real pipeline prompts: review, plan, sizing, health and explain each answered in 2–5 seconds. `z-ai/glm-5.3-flash` timed out on every request that day and `mistralai/mistral-large-4-1t-a52b` worked but was slow (it reasons before answering), so Nemotron is the default.
+
+How a call works: the model is asked for one JSON object matching the schema; thinking mode is switched off (`AIOPS_THINKING=on` re-enables it); the reply is streamed, so a slow model is told apart from a dead one, with a 180-second hard deadline; reasoning tags and code fences are stripped and the result is validated. Any failure emits a `::warning::` annotation with the reason and the feature falls back to rules.
+
+Configuration: `AIOPS_MODEL` picks another model, `AIOPS_PROVIDER` / `AIOPS_BASE_URL` point at any OpenAI-compatible endpoint, and `ANTHROPIC_API_KEY` switches to Claude (native structured outputs). With no key, everything runs on rules.
+
+## ChatOps deploy planner
+
+Comment on a PR (owners, members and collaborators only):
+
+| Comment | Result |
+|---|---|
+| `/deploy preview` | Vercel preview deployment of the PR |
+| `/deploy production` | Vercel production, after the `production` environment approval |
+| `/deploy on gcp` (or `aws`, `azure`) | Kubernetes deploy to that cloud's production environment |
+| `/rollback production` | roll the production release back |
+| `/plan <plain English>` | post the plan only, run nothing |
+
+The model returns a `DeployPlan`: environment, target and steps from a fixed list (`build, test, migrate, deploy, smoke, health_gate, promote, rollback`). Policy then overrides anything that contradicts what the human literally typed, forces the mandatory step order, allows `preview` only on Vercel (each cloud has one environment, `production`), and requires approval for production. The plan is posted on the PR and executed by the matching deploy workflow.
+
+## AI PR review and risk gate
+
+Every non-draft PR diff gets a structured review (findings per file, risk reasons, suggested tests) as a sticky comment, plus a `risk:low|medium|high` label. Path rules set a floor: migrations and Terraform are always high; workflows, Helm, Docker, `vercel.json`, auth/config code and lockfiles at least medium. The model can raise risk but never lower it. The `risk-gate` job requires two approvals on high-risk PRs.
+
+## Environment sizing (one environment, every cloud)
+
+`infra/terraform/environments/production.intent.yaml` describes the need: *"high-availability production for a public launch, survive a zone outage, $2,500/month, ~120 rps"*. `aiops envgen` asks the model for a size and replica ranges, then:
+
+- clamps them to `policy.yaml` (allowed sizes, replica caps, ≥ 2 replicas for critical availability);
+- steps the size down until a deterministic cost estimate fits the budget on the most expensive of AWS, GCP and Azure;
+- writes cloud-neutral `generated/production.tfvars` (size) and `generated/production.values.yaml` (replicas). Regions stay in each stack's own `terraform.tfvars`.
+
+Changing the intent on `main` makes `ai.yml` open a PR with the regenerated files. Current output: `ha`, API 4–12 and web 2–6 replicas.
 
 ## Deploy health gate
 
-After each Vercel deploy, and before the domain moves:
+After each deploy, before users get the new release:
 
-1. **SLOs first** (no AI): error rate ≤ 1 %, p95 ≤ 2.5 s, and p95 no more than 1.5× the live release. Any breach blocks the release.
-2. **Claude reads the metrics and logs** for what thresholds miss: a new exception type, a database pool warning, one slow endpoint. It blocks only when it is at least 80 % confident.
-3. Without `ANTHROPIC_API_KEY`, or if the model is down, the SLOs alone decide.
+1. **SLOs first** (no AI): error rate ≤ 1 %, a p95 latency ceiling, and p95 no more than 1.5× the previous release. Any breach blocks the release.
+2. **The model reads the metrics and logs** for what thresholds miss: a new exception type, a database pool warning, one slow endpoint. It blocks only when at least 80 % confident.
+3. Without the key, or if the model is down, the SLOs alone decide.
 
-A blocked release never takes traffic: the old release keeps the domain and an incident issue is opened with the summary.
+On Vercel the domain only moves after the gate passes. On Kubernetes the Helm release is atomic and a failed gate runs `helm rollback`. Both open an incident issue with the model's summary.
 
-## Environment sizing
+## CI failure explainer
 
-`infra/terraform/environments/staging.intent.yaml` describes the need, not the build: *"cost-sensitive staging for QA and demos, best-effort, $300/month, ~3 rps"*. `make envgen` asks Claude for a size and replica counts, then:
-
-- clamps them to `infra/terraform/environments/policy.yaml` (allowed sizes, replica caps, ≥ 2 replicas for critical environments);
-- steps the size down until a deterministic cost estimate fits the budget;
-- writes `generated/<env>.tfvars` and `generated/<env>.values.yaml`.
-
-Commit the result through a normal PR. Current output: staging → `small` (~$204/month), production → `ha` with ≥ 2 replicas per tier (~$1,472/month).
+When a CI job fails on a PR, the failed log tail goes to the model, which posts the failing step, probable cause and a fix as a sticky comment. Without AI it reports the first error line.
 
 ## In the product
 
 The composer's **Sharpen** button uses the same pattern inside the API (`app/backend/src/sparkboard_api/ai/`, Anthropic or any OpenAI-compatible endpoint). It is rate-limited, treats user text as data, and is hidden when no AI key is configured.
 
-## Running it
+## Running it locally
 
 ```bash
 cd tools/aiops && uv sync
+uv run aiops plan --command "/deploy on gcp"
 uv run aiops smoke --url https://ideas.infrenic.com --out smoke.json
 uv run aiops health --current smoke.json
+make envgen        # from the repo root; uses NVIDIA_API_KEY (or ANTHROPIC_API_KEY) if set
 ```

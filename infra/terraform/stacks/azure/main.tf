@@ -41,7 +41,7 @@ provider "helm" {
 }
 
 locals {
-  # Replica counts generated from infra/terraform/environments/<env>.intent.yaml by `aiops envgen`.
+  # Replica counts generated from infra/terraform/environments/production.intent.yaml by `aiops envgen`.
   env_values = "${path.root}/../../environments/generated/${var.environment}.values.yaml"
 }
 

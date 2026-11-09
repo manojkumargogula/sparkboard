@@ -1,11 +1,15 @@
 # CI and code scanning
 
-The repo has two workflows:
+The repo has four workflows. This page covers `ci.yml`; the AI and deploy workflows are described in [ai-ops.md](ai-ops.md) and [deployment.md](deployment.md).
+
+Summary:
 
 | Workflow | Runs on | Does |
 |---|---|---|
 | `.github/workflows/ci.yml` | every PR, every push to `main`, weekly | static analysis, code scanning and tests. All jobs must pass before a merge |
-| `.github/workflows/deploy-vercel.yml` | after CI passes on `main`, or by hand | deploys to Vercel (see [deployment.md](deployment.md)) |
+| `.github/workflows/ai.yml` | PRs, PR comments, intent file changes | AI PR review + risk gate, ChatOps `/deploy`, AI environment config |
+| `.github/workflows/deploy-vercel.yml` | after CI passes on `main`, ChatOps, or by hand | deploys to Vercel |
+| `.github/workflows/deploy-k8s.yml` | ChatOps or by hand | deploys to EKS, GKE or AKS |
 
 ## Code scanning
 

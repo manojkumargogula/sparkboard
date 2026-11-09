@@ -41,6 +41,18 @@ Scope is optional: `api`, `web`, `aiops`, `infra`, `ci`, `docs`. Summary in the 
 
 ## Pull requests
 
+`main` is protected by a GitHub ruleset:
+
+- **No direct pushes:** every change goes through a pull request.
+- **All required checks must pass:** branch name, API, UI, aiops, infra, end-to-end, Semgrep, Trivy, gitleaks, both image scans, and the risk gate.
+- **Branch must be up to date with `main`** before merging.
+- **Linear history:** rebase or squash merges only, no merge commits.
+- **All review conversations resolved** before merging.
+- **No force pushes and no deletion** of `main`.
+- Approvals: 0 required by the ruleset (a solo owner can't approve their own PR). High-risk PRs from anyone other than the owner need `RISK_HIGH_APPROVALS` approvals (default 2) through the risk gate.
+- The repository admin can bypass the rules only when merging a PR, for emergencies. Bot PRs opened with the workflow token (the AI env-config PR) don't trigger CI, so they need that bypass or a re-run.
+
+
 - Small and focused: one concern per PR.
 - Fill in the template: what changed, why, how it was tested.
 - CI must be green. Don't disable a check to get green; fix the cause.

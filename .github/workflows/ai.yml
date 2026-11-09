@@ -1,0 +1,221 @@
+name: AI assist
+
+# Three AI features, each one "the model proposes, deterministic code decides":
+#
+#   review      every PR: Claude reviews the diff and sets a risk:* label.
+#               Path rules (migrations, Terraform, workflows) set a floor the
+#               model cannot lower. risk:high needs two approvals.
+#   chatops     PR comment `/deploy preview`, `/deploy on gcp`,
+#               `/rollback production` or `/plan <plain English>`: Claude turns
+#               it into a typed plan of allow-listed steps, policy corrects it,
+#               then the matching deploy workflow runs it.
+#   env-config  edit infra/terraform/environments/production.intent.yaml in plain
+#               language: Claude sizes it, policy clamps it, and the generated
+#               tfvars + Helm values arrive as a PR for review.
+#
+# Without ANTHROPIC_API_KEY every feature falls back to its rules.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+  issue_comment:
+    types: [created]
+  push:
+    branches: [main]
+    paths: ["infra/terraform/environments/*.intent.yaml", "infra/terraform/environments/policy.yaml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ------------------------------------------------------------ AI PR review
+
+  review:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: write, issues: write }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { fetch-depth: 0 }
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - name: Diff against the base branch
+        env:
+          BASE: ${{ github.base_ref }}
+        run: git diff --unified=3 "origin/$BASE...HEAD" > pr.diff
+      - name: Review
+        id: review
+        working-directory: tools/aiops
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: uv run --frozen aiops review --diff ../../pr.diff
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2
+        with:
+          header: ai-review
+          message: ${{ steps.review.outputs.comment }}
+      - name: Label risk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          RISK: ${{ steps.review.outputs.risk }}
+        run: |
+          gh label create risk:low --force --color 0e8a16 >/dev/null
+          gh label create risk:medium --force --color fbca04 >/dev/null
+          gh label create risk:high --force --color d73a4a >/dev/null
+          gh pr edit "$PR" --remove-label risk:low --remove-label risk:medium --remove-label risk:high >/dev/null || true
+          gh pr edit "$PR" --add-label "risk:$RISK"
+
+  risk-gate:
+    needs: [review]
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'pull_request_review')
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: read }
+    steps:
+      # Contributors' high-risk PRs need RISK_HIGH_APPROVALS approvals (default 2).
+      # The repo owner can't approve their own PR, so their high-risk PRs pass with
+      # the risk label and AI review as the visible warning.
+      - name: High-risk changes need approvals
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR_ROLE: ${{ github.event.pull_request.author_association }}
+          REQUIRED: ${{ vars.RISK_HIGH_APPROVALS || '2' }}
+        run: |
+          labels=$(gh pr view "$PR" -R "$REPO" --json labels -q '.labels[].name')
+          if ! grep -qx 'risk:high' <<<"$labels"; then echo "Not high risk."; exit 0; fi
+          if [ "$AUTHOR_ROLE" = "OWNER" ]; then
+            echo "::warning::risk:high PR by the repository owner: review the AI risk comment before merging."
+            exit 0
+          fi
+          approvals=$(gh api "repos/$REPO/pulls/$PR/reviews" \
+            -q '[group_by(.user.login)[] | last | select(.state=="APPROVED")] | length')
+          echo "High-risk PR with $approvals of $REQUIRED required approval(s)."
+          [ "$approvals" -ge "$REQUIRED" ] || { echo "::error::risk:high requires $REQUIRED approvals"; exit 1; }
+
+  # ------------------------------------------------------------ ChatOps
+
+  plan:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      (startsWith(github.event.comment.body, '/deploy') ||
+       startsWith(github.event.comment.body, '/rollback') ||
+       startsWith(github.event.comment.body, '/plan'))
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: write, issues: write }
+    outputs:
+      environment: ${{ steps.plan.outputs.environment }}
+      target: ${{ steps.plan.outputs.target }}
+      actions: ${{ steps.plan.outputs.actions }}
+      ref: ${{ steps.pr.outputs.sha }}
+      execute: ${{ steps.mode.outputs.execute }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.issue.number }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      COMMAND: ${{ github.event.comment.body }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Acknowledge
+        run: gh api "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=eyes >/dev/null
+      - name: Resolve PR head and context
+        id: pr
+        run: |
+          echo "sha=$(gh pr view "$PR" --json headRefOid -q .headRefOid)" >> "$GITHUB_OUTPUT"
+          gh pr view "$PR" --json files,headRefName \
+            -q '"branch: \(.headRefName)\nfiles:\n" + ([.files[].path] | join("\n"))' > context.txt
+      - name: Plan only or execute
+        id: mode
+        run: |
+          case "$COMMAND" in /plan*) echo "execute=false" ;; *) echo "execute=true" ;; esac >> "$GITHUB_OUTPUT"
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - name: Plan (Claude → typed plan → policy)
+        id: plan
+        working-directory: tools/aiops
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: uv run --frozen aiops plan --command "$COMMAND" --context ../../context.txt
+      - name: Post the plan on the PR
+        env:
+          BODY: ${{ steps.plan.outputs.comment }}
+        run: gh pr comment "$PR" --body "$BODY"
+
+  deploy-vercel:
+    needs: plan
+    if: needs.plan.outputs.execute == 'true' && needs.plan.outputs.target == 'vercel'
+    permissions: { contents: read, issues: write, pull-requests: write }
+    uses: ./.github/workflows/deploy-vercel.yml
+    with:
+      environment: ${{ needs.plan.outputs.environment }}
+      ref: ${{ needs.plan.outputs.ref }}
+      rollback: ${{ contains(needs.plan.outputs.actions, 'rollback') }}
+      pr: ${{ github.event.issue.number }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      PREVIEW_DATABASE_URL_UNPOOLED: ${{ secrets.PREVIEW_DATABASE_URL_UNPOOLED }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+  deploy-kubernetes:
+    needs: plan
+    if: needs.plan.outputs.execute == 'true' && startsWith(needs.plan.outputs.target, 'k8s-')
+    permissions: { contents: read, id-token: write, issues: write }
+    uses: ./.github/workflows/deploy-k8s.yml
+    with:
+      cloud: ${{ needs.plan.outputs.target }}
+      ref: ${{ needs.plan.outputs.ref }}
+      rollback: ${{ contains(needs.plan.outputs.actions, 'rollback') }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+
+  # ------------------------------------------------------------ env config
+
+  env-config:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions: { contents: write, pull-requests: write }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - name: Generate configs (Claude → policy clamp → budget check)
+        id: gen
+        working-directory: tools/aiops
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          {
+            echo "body<<EOF_BODY"
+            for intent in ../../infra/terraform/environments/*.intent.yaml; do
+              uv run --frozen aiops envgen --intent "$intent" --policy ../../infra/terraform/environments/policy.yaml \
+                --out-dir ../../infra/terraform/environments/generated
+              echo; echo "---"; echo
+            done
+            echo "EOF_BODY"
+          } >> "$GITHUB_OUTPUT"
+      - uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
+        with:
+          branch: chore/ai-env-config
+          title: "chore(env): regenerate environment configs from intents"
+          commit-message: "chore(env): regenerate environment configs from intents"
+          body: |
+            Generated by `aiops envgen` from `infra/terraform/environments/*.intent.yaml`, clamped by `infra/terraform/environments/policy.yaml`.
+
+            ${{ steps.gen.outputs.body }}
+          labels: ai-generated, infrastructure

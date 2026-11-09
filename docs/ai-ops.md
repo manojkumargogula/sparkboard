@@ -70,7 +70,7 @@ The composer's **Sharpen** button uses the same pattern inside the API (`app/bac
 ```bash
 cd tools/aiops && uv sync
 uv run aiops plan --command "/deploy on gcp"
-uv run aiops smoke --url https://ideas.infrenic.com --out smoke.json
+uv run aiops smoke --url https://sparkboard.infrenic.com --out smoke.json
 uv run aiops health --current smoke.json
 make envgen        # from the repo root; uses NVIDIA_API_KEY (or ANTHROPIC_API_KEY) if set
 ```

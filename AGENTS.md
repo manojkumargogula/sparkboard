@@ -5,7 +5,7 @@ Code standards and branch naming are in [docs/code-quality.md](docs/code-quality
 
 ## What this is
 
-Sparkboard is a community idea board, live at https://ideas.infrenic.com. People post ideas, vote, comment, and follow them on a roadmap. Writes need Google sign-in in production.
+Sparkboard is a community idea board, live at https://sparkboard.infrenic.com. People post ideas, vote, comment, and follow them on a roadmap. Writes need Google sign-in in production.
 
 ## Architecture
 

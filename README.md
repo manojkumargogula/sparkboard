@@ -6,6 +6,34 @@ A community idea board by [Infrenic](https://infrenic.com): people post ideas, v
 - **Live:** https://ideas.infrenic.com (Vercel + Neon Postgres)
 - **API docs:** https://ideas.infrenic.com/api/docs
 - **Kubernetes:** one Helm chart and Terraform for AWS, GCP and Azure (validated, not applied)
+- **Built by:** [Manoj Kumar Gogula](https://manojkumargogula.github.io)
+
+![Sparkboard home page: "What should we build next?" with the three most-wanted problems as tickets](docs/images/hero.png)
+
+## The product
+
+Every team and community has more ideas than it can build. Feature requests get lost in chat threads, the same idea is posted five times, and nobody can see what happened to the one they voted for. Sparkboard gives those ideas one public home:
+
+- **Post an idea** in a sentence. While you type, Sparkboard shows similar ideas that already exist, so people vote instead of reposting.
+- **Vote** for the ideas you want. Each person gets one vote per idea, and voting needs a Google account, so the ranking reflects real people.
+- **Discuss** on each idea's own shareable page.
+- **Follow it to shipped** on the public roadmap: Open → Planned → Building → Shipped.
+
+The board opens with 114 curated problems worth solving across 20 industries, ranked by score until the community's votes re-rank them. An optional AI **Sharpen** button rewrites a rough idea into a clear headline and description. Search, the command palette (`⌘K`) and keyboard shortcuts make it fast to get around, and it works just as well on a phone.
+
+### Screenshots
+
+| Top 10 problems | Every idea, filterable |
+|---|---|
+| ![Top 10 problems as a ranked grid of cards](docs/images/top-10.png) | ![All ideas table with topic filters and Heat / Rising / Newest sorting](docs/images/all-ideas.png) |
+
+| Idea page with discussion | Public roadmap |
+|---|---|
+| ![An idea opened in a side sheet with votes, share and discussion](docs/images/idea.png) | ![Roadmap board with Open, Planned, Building and Shipped columns](docs/images/roadmap.png) |
+
+<p align="center"><img src="docs/images/mobile.png" alt="Sparkboard on a phone" width="300"></p>
+
+Full feature list and tech stack: [docs/product.md](docs/product.md).
 
 ## Quick start
 
@@ -52,6 +80,11 @@ AI coding agents: start with [AGENTS.md](AGENTS.md).
 | [Code quality](docs/code-quality.md) | coding standards, naming, branch and commit conventions |
 | [Deployment](docs/deployment.md) | the Vercel pipeline, plus Terraform for Kubernetes on AWS / GCP / Azure |
 | [AI operations](docs/ai-ops.md) | the deploy health gate and AI environment sizing |
+
+## Author
+
+Built by **Manoj Kumar Gogula**: design, frontend, backend, infrastructure and CI/CD.
+Portfolio and other projects: **https://manojkumargogula.github.io**
 
 ## License
 

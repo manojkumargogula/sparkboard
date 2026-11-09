@@ -62,8 +62,9 @@ infra/
 docs/                 all documentation
 .github/workflows/    ci.yml (static analysis, code scanning, tests) · deploy-vercel.yml
 
-api/index.py, vercel.json, requirements.txt   Vercel entry point and config (Vercel needs them at the root)
-docker-compose.yml, Makefile                   local stack and command entry point
+vercel.json           Vercel config: ui + backend services
+docker-compose.yml    local stack
+Makefile              command entry point (make help)
 ```
 
 ## Documentation

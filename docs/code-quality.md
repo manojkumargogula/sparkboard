@@ -59,7 +59,7 @@ Scope is optional: `api`, `web`, `aiops`, `infra`, `ci`, `docs`. Summary in the 
 
 Naming: `snake_case` for modules, functions and variables, `PascalCase` for classes, `UPPER_CASE` for constants. Tests are `tests/test_<area>.py` and run against a real Postgres (`make test-db`), not mocks.
 
-Dependencies: add them with `uv add`, commit `uv.lock`, then run `make requirements` for the API.
+Dependencies: add them with `uv add` and commit `uv.lock`.
 
 ## TypeScript (web)
 

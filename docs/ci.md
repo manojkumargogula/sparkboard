@@ -22,7 +22,7 @@ Semgrep and Trivy results are uploaded as SARIF, so they also appear in the repo
 
 | Job | Checks |
 |---|---|
-| `api` | `ruff` lint + format, `mypy --strict`, `bandit` (security lint), `pip-audit`, `pytest` against real Postgres (≥ 85 % coverage), `requirements.txt` in sync with `uv.lock` |
+| `api` | `ruff` lint + format, `mypy --strict`, `bandit` (security lint), `pip-audit`, `pytest` against real Postgres (≥ 85 % coverage) |
 | `web` | `eslint` (typescript-eslint strict type-checked + `jsx-a11y` + React hooks), `prettier`, `tsc`, `npm audit`, `vitest` with coverage thresholds, production build, bundle budget (230 kB gzipped) |
 | `aiops` | `ruff`, `mypy --strict`, `pytest` (≥ 85 % coverage) |
 | `infra` | `hadolint` (Dockerfiles), `actionlint` + shellcheck (workflows), `terraform fmt` + `validate` (every stack), `tflint`, `helm lint` + `kubeconform` (every cloud) |

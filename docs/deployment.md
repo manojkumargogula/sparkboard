@@ -36,7 +36,7 @@
 
 4. **Google sign-in client.** Google Cloud → Google Auth Platform → Clients → *Web application*. Add the site and `http://localhost:5173` as Authorized JavaScript origins (no redirect URI or secret needed), and publish the app.
 
-Vercel needs `api/index.py`, `vercel.json` and `requirements.txt` at the repo root. After changing API dependencies run `make requirements`; CI fails if you forget.
+`vercel.json` defines two services in one project: `ui` (root `app/ui`, Vite) and `backend` (root `app/backend`, FastAPI, installed from `uv.lock`). They build and deploy together, so the UI and API can never be out of sync.
 
 ## Kubernetes on AWS / GCP / Azure (not applied)
 

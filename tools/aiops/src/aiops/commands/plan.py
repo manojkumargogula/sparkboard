@@ -192,7 +192,7 @@ def render(result: PlanResult) -> str:
         lines += ["", "**Policy corrections:**", *[f"- {f}" for f in result.fixes]]
     lines += [
         "",
-        "⏸️ Waiting for a reviewer to approve the `production` environment."
+        "🔐 Production: runs only after a reviewer approves the `production` environment."
         if p.requires_approval
         else "▶️ Running now.",
     ]

@@ -17,7 +17,7 @@ variable "github_repo" {
 
 variable "domain" {
   type    = string
-  default = "ideas.infrenic.com"
+  default = "sparkboard.infrenic.com"
 }
 
 variable "google_client_id" {

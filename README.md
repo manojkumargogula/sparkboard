@@ -7,7 +7,7 @@ Built by [Manoj Kumar Gogula](https://manojkumargogula.github.io).
 
 | Deployment | Status | URL |
 |---|---|---|
-| **Vercel + Neon Postgres** | Live | **https://ideas.infrenic.com** · [API docs](https://ideas.infrenic.com/api/docs) |
+| **Vercel + Neon Postgres** | Live | **https://sparkboard.infrenic.com** · [API docs](https://sparkboard.infrenic.com/api/docs) |
 | AWS · VM (EC2) or Kubernetes (EKS + RDS) | IaC + pipeline ready, tested in CI | not deployed yet |
 | GCP · VM (Compute Engine) or Kubernetes (GKE Autopilot + Cloud SQL) | IaC + pipeline ready, tested in CI | not deployed yet |
 | Azure · VM (Linux VM) or Kubernetes (AKS + PostgreSQL Flexible Server) | IaC + pipeline ready, tested in CI | not deployed yet |

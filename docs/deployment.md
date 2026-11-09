@@ -2,7 +2,7 @@
 
 | Target | Status |
 |---|---|
-| **Vercel + Neon** | Live at https://ideas.infrenic.com, deployed by `deploy-vercel.yml` |
+| **Vercel + Neon** | Live at https://sparkboard.infrenic.com, deployed by `deploy-vercel.yml` |
 | AWS / GCP / Azure, as a **VM** (Docker Compose + nginx) or on **Kubernetes** (Helm) | Terraform, VM files, Helm chart and `deploy-cloud.yml` written, tested in both modes and scanned in CI; not applied yet |
 
 ## Vercel (the live target)
@@ -31,7 +31,7 @@
    | secrets `DATABASE_URL_UNPOOLED`, `PREVIEW_DATABASE_URL_UNPOOLED` | migrations |
    | secret `NVIDIA_API_KEY` *(optional)* | the model (NVIDIA API) for the AI health gate and other AI features; without it the rules decide. `ANTHROPIC_API_KEY` switches to Claude |
    | secret `VERCEL_AUTOMATION_BYPASS_SECRET` *(optional)* | lets probes reach protected preview URLs |
-   | variable `PUBLIC_URL` | `https://ideas.infrenic.com` |
+   | variable `PUBLIC_URL` | `https://sparkboard.infrenic.com` |
    | environment `production` | required reviewers: the human approval before production |
 
 4. **Google sign-in client.** Google Cloud → Google Auth Platform → Clients → *Web application*. Add the site and `http://localhost:5173` as Authorized JavaScript origins (no redirect URI or secret needed), and publish the app.

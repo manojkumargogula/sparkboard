@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from typing import Literal, TypeVar
 
 import anthropic
@@ -95,10 +96,16 @@ class LLM:
         return self.provider is not None
 
     def structured(self, system: str, prompt: str, schema: type[T], effort: Effort = "medium") -> T:
-        if self._anthropic is not None:
-            return self._anthropic_structured(self._anthropic, system, prompt, schema, effort)
-        if self._http is not None:
-            return self._openai_structured(self._http, system, prompt, schema)
+        try:
+            if self._anthropic is not None:
+                return self._anthropic_structured(self._anthropic, system, prompt, schema, effort)
+            if self._http is not None:
+                return self._openai_structured(self._http, system, prompt, schema)
+        except LLMUnavailableError as exc:
+            # Visible in the Actions log and as a run annotation; the caller falls back to rules.
+            reason = str(exc).replace("\n", " ")[:500]
+            print(f"::warning title=AI fallback ({schema.__name__})::{reason}", file=sys.stderr)
+            raise
         raise LLMUnavailableError("no model configured (set NVIDIA_API_KEY or ANTHROPIC_API_KEY)")
 
     def _anthropic_structured(

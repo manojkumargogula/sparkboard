@@ -22,7 +22,7 @@ def reply(content: str, status: int = 200) -> httpx.MockTransport:
     def handle(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         assert request.url.path == "/v1/chat/completions"
-        assert body["model"] == "z-ai/glm-5.3-flash"
+        assert body["chat_template_kwargs"] == {"enable_thinking": False}
         assert "JSON Schema" in body["messages"][0]["content"]
         return httpx.Response(status, json={"choices": [{"message": {"content": content}}]})
 
@@ -53,9 +53,22 @@ def test_provider_is_picked_from_the_environment(monkeypatch: pytest.MonkeyPatch
     assert LLM().enabled is False
     monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-x")
     nim = LLM()
-    assert (nim.provider, nim.model) == ("nvidia", "z-ai/glm-5.3-flash")
+    assert (nim.provider, nim.model) == ("nvidia", llm_mod.DEFAULT_MODELS["nvidia"])
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-x")
     assert LLM().provider == "anthropic"
     monkeypatch.setenv("AIOPS_PROVIDER", "nvidia")
     assert LLM().provider == "nvidia"
-    assert llm_mod.DEFAULT_MODELS["nvidia"] == "z-ai/glm-5.3-flash"
+
+
+def test_streamed_reply_is_assembled() -> None:
+    chunks = ['{"healthy": ', "false, ", '"confidence": 0.85}']
+    sse = (
+        "".join(f"data: {json.dumps({'choices': [{'delta': {'content': c}}]})}\n\n" for c in chunks)
+        + "data: [DONE]\n\n"
+    )
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, text=sse)
+
+    out = nvidia(httpx.MockTransport(handle)).structured("s", "p", Verdict)
+    assert out == Verdict(healthy=False, confidence=0.85)

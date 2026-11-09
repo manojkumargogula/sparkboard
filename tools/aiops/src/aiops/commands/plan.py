@@ -56,6 +56,7 @@ class DeployPlan(BaseModel):
 class PlanResult(BaseModel):
     plan: DeployPlan
     source: str  # "ai" | "rules"
+    model: str = ""
     fixes: list[str]
 
 
@@ -170,7 +171,7 @@ def make_plan(command: str, llm: LLM, context: str = "") -> PlanResult:
     except LLMUnavailableError:
         plan, source = rules_plan(command), "rules"
     plan, fixes = enforce_policy(plan, command)
-    return PlanResult(plan=plan, source=source, fixes=fixes)
+    return PlanResult(plan=plan, source=source, fixes=fixes, model=llm.model)
 
 
 def render(result: PlanResult) -> str:
@@ -184,7 +185,8 @@ def render(result: PlanResult) -> str:
         *[f"| {i} | `{s.action}` | {s.reason} |" for i, s in enumerate(p.steps, 1)],
         "",
         f"**Rationale:** {p.rationale}",
-        f"**Planner:** {'Claude' if result.source == 'ai' else 'rules (AI unavailable)'}",
+        "**Planner:** "
+        + (f"AI (`{result.model}`)" if result.source == "ai" else "rules (AI unavailable)"),
     ]
     if result.fixes:
         lines += ["", "**Policy corrections:**", *[f"- {f}" for f in result.fixes]]

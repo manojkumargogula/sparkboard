@@ -158,7 +158,7 @@ Full setup details: [docs/deployment.md](docs/deployment.md).
 
 All of it lives in [`tools/aiops`](tools/aiops): one small, typed package (mypy strict, 96 % test coverage) with a single LLM adapter, shared by every workflow.
 
-> **Which model.** The pipeline runs on **GLM 5.3 Flash (`z-ai/glm-5.3-flash`) through NVIDIA's OpenAI-compatible API**, using the `NVIDIA_API_KEY` repository secret. The model is asked for JSON matching each schema and the reply is validated; anything invalid falls back to rules. The adapter (`tools/aiops/src/aiops/llm.py`) also supports Claude (`ANTHROPIC_API_KEY`) or any OpenAI-compatible endpoint (`AIOPS_PROVIDER`, `AIOPS_BASE_URL`, `AIOPS_MODEL`), and with no key every feature runs on its deterministic fallback.
+> **Which model.** The pipeline runs on **NVIDIA Nemotron 3.5 Lightning (`nvidia/nemotron-3.5-lightning-30b-a3b`) through NVIDIA's OpenAI-compatible API**, with the `NVIDIA_API_KEY` repository secret and thinking mode off, so each call answers in 2–5 seconds. The model is asked for JSON matching each schema, the streamed reply is validated, and anything invalid or late falls back to rules (with a warning annotation in the run). Any other model is one variable away (`AIOPS_MODEL`, e.g. `z-ai/glm-5.3-flash` or `mistralai/mistral-large-4-1t-a52b`), Claude works with `ANTHROPIC_API_KEY`, and with no key every feature runs on its deterministic fallback.
 
 ### 1. ChatOps deploy planner (AI-assisted command generation)
 

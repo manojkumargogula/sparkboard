@@ -13,7 +13,11 @@
 
 **Design rule: the model proposes, deterministic code decides.** Every AI answer is a typed object validated against a Pydantic schema. Policy code can correct or override it, and every command falls back to rules when the model is unavailable.
 
-**Model:** GLM 5.3 Flash (`z-ai/glm-5.3-flash`) via NVIDIA's OpenAI-compatible API, with the `NVIDIA_API_KEY` repository secret. The model is asked for one JSON object matching the schema; reasoning tags and code fences are stripped and the result is validated. Set `ANTHROPIC_API_KEY` to use Claude instead (native structured outputs), or `AIOPS_PROVIDER` / `AIOPS_BASE_URL` / `AIOPS_MODEL` for another OpenAI-compatible endpoint. With no key, everything runs on rules. AI can make a decision smarter but never unsafe, and it can never block a deploy or a rollback.
+**Model:** NVIDIA Nemotron 3.5 Lightning (`nvidia/nemotron-3.5-lightning-30b-a3b`) via NVIDIA's OpenAI-compatible API, with the `NVIDIA_API_KEY` repository secret. Measured on 2026-11-09 with the real pipeline prompts: review, plan, sizing, health and explain each answered in 2–5 seconds. `z-ai/glm-5.3-flash` timed out on every request that day and `mistralai/mistral-large-4-1t-a52b` worked but was slow (it reasons before answering), so Nemotron is the default.
+
+How a call works: the model is asked for one JSON object matching the schema; thinking mode is switched off (`AIOPS_THINKING=on` re-enables it); the reply is streamed, so a slow model is told apart from a dead one, with a 180-second hard deadline; reasoning tags and code fences are stripped and the result is validated. Any failure emits a `::warning::` annotation with the reason and the feature falls back to rules.
+
+Configuration: `AIOPS_MODEL` picks another model, `AIOPS_PROVIDER` / `AIOPS_BASE_URL` point at any OpenAI-compatible endpoint, and `ANTHROPIC_API_KEY` switches to Claude (native structured outputs). With no key, everything runs on rules.
 
 ## ChatOps deploy planner
 

@@ -55,3 +55,13 @@ def test_ai_can_raise_risk() -> None:
 def test_large_deletions_are_medium(offline: FakeLLM) -> None:
     diff = "diff --git a/a.py b/a.py\n" + "-gone\n" * 900
     assert review.review(diff, offline).risk == "medium"
+
+
+def test_model_diff_keeps_code_and_lists_the_rest() -> None:
+    code = "diff --git a/app/backend/x.py b/app/backend/x.py\n+print(1)\n"
+    docs = "diff --git a/docs/a.md b/docs/a.md\n+text\n"
+    lock = "diff --git a/app/ui/package-lock.json b/app/ui/package-lock.json\n+{}\n"
+    big = "diff --git a/app/ui/big.ts b/app/ui/big.ts\n" + "+x\n" * 100
+    shown, omitted = review.model_diff(code + docs + lock + big, limit=200)
+    assert shown == code
+    assert omitted == ["docs/a.md", "app/ui/package-lock.json", "app/ui/big.ts"]

@@ -88,7 +88,7 @@ class LLM:
             self._http = http or httpx.Client(
                 base_url=os.environ.get("AIOPS_BASE_URL", NVIDIA_BASE_URL),
                 headers={"Authorization": f"Bearer {key}"},
-                timeout=90,
+                timeout=180,
             )
 
     @property

@@ -3,10 +3,10 @@
 api:
   autoscaling:
     enabled: true
-    minReplicas: 4
-    maxReplicas: 12
+    minReplicas: 3
+    maxReplicas: 3
 web:
   autoscaling:
     enabled: true
     minReplicas: 2
-    maxReplicas: 6
+    maxReplicas: 2

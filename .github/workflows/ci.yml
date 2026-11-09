@@ -214,7 +214,7 @@ jobs:
           path: ~/.terraform.d/plugin-cache
           key: tf-providers-${{ hashFiles('infra/terraform/stacks/*/.terraform.lock.hcl') }}
           restore-keys: tf-providers-
-      - name: Terraform validate (every stack)
+      - name: Terraform validate + test (every stack, both deployment modes)
         env:
           TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
         run: |
@@ -235,6 +235,10 @@ jobs:
               exit 1
             fi
             terraform -chdir=infra/terraform/stacks/$stack validate
+            # Both deployment modes (vm, k8s) against mocked providers: no cloud account needed.
+            if [ -d "infra/terraform/stacks/$stack/tests" ]; then
+              terraform -chdir=infra/terraform/stacks/$stack test
+            fi
           done
       - name: Save Terraform provider cache
         if: always()

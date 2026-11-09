@@ -1,16 +1,16 @@
 # Sparkboard
 
 **Drop an idea. Fan the best ones. Watch them ship.**
-A community idea board by [Infrenic](https://infrenic.com): people post ideas, vote on them, discuss them, and follow them on a public roadmap from *Open* to *Shipped*. It ships through an AI-assisted, cloud-agnostic delivery platform: one codebase, one Helm chart and one set of Terraform modules that target Vercel, AWS, GCP or Azure.
+A community idea board by [Infrenic](https://infrenic.com): people post ideas, vote on them, discuss them, and follow them on a public roadmap from *Open* to *Shipped*. It ships through an AI-assisted, cloud-agnostic delivery platform: pick a cloud (AWS, GCP or Azure) and a deployment mode, **a VM with Docker Compose + nginx** or **Kubernetes with Helm**, and the same Terraform, pipeline and AI health gate deploy it. The live demo runs on Vercel.
 
 Built by [Manoj Kumar Gogula](https://manojkumargogula.github.io).
 
 | Deployment | Status | URL |
 |---|---|---|
 | **Vercel + Neon Postgres** | Live | **https://ideas.infrenic.com** · [API docs](https://ideas.infrenic.com/api/docs) |
-| AWS (EKS + RDS) | IaC + pipeline ready, validated in CI | not deployed yet |
-| GCP (GKE Autopilot + Cloud SQL) | IaC + pipeline ready, validated in CI | not deployed yet |
-| Azure (AKS + PostgreSQL Flexible Server) | IaC + pipeline ready, validated in CI | not deployed yet |
+| AWS · VM (EC2) or Kubernetes (EKS + RDS) | IaC + pipeline ready, tested in CI | not deployed yet |
+| GCP · VM (Compute Engine) or Kubernetes (GKE Autopilot + Cloud SQL) | IaC + pipeline ready, tested in CI | not deployed yet |
+| Azure · VM (Linux VM) or Kubernetes (AKS + PostgreSQL Flexible Server) | IaC + pipeline ready, tested in CI | not deployed yet |
 
 ![Sparkboard home page: "What should we build next?" with the three most-wanted problems as tickets](docs/images/hero.png)
 
@@ -73,12 +73,19 @@ flowchart LR
     JOB[migration Job<br/>Helm pre-upgrade hook] --> PG
   end
 
+  subgraph VM["Target C · one VM on AWS / GCP / Azure"]
+    NGX[host nginx<br/>HTTPS] --> CWEB[web container<br/>nginx + SPA]
+    CWEB -->|/api| CAPI[api container<br/>FastAPI]
+    CAPI --> CPG[(Postgres container<br/>nightly backups)]
+  end
+
   B -->|/*| UI
   B -->|/api/*| BE
   B --> ING
+  B --> NGX
 ```
 
-- **One app, two targets.** The same React and FastAPI code runs serverless on Vercel (two services in one project, routed by `vercel.json`) or as containers on any managed Kubernetes. On Kubernetes, nginx serves the SPA and proxies `/api`, so the browser sees one origin.
+- **One app, three ways to run it.** The same React and FastAPI code runs serverless on Vercel (two services in one project, routed by `vercel.json`), as containers on managed Kubernetes (Helm), or with Docker Compose on a single VM behind nginx. Outside Vercel, nginx serves the SPA and proxies `/api`, so the browser sees one origin.
 - **Backend layers:** routers (HTTP) → services (use cases, transactions) → repositories (all SQL) → models. `create_app(settings)` is a factory, so every test gets an isolated app against a real Postgres.
 - **Migrations run before traffic shifts** (a Helm pre-upgrade Job on Kubernetes, a pipeline step on Vercel), so they are backward compatible by rule.
 - **AI tooling** lives in one typed Python package, `tools/aiops`, used by every workflow.
@@ -125,7 +132,7 @@ Four GitHub Actions workflows:
 | [`ci.yml`](.github/workflows/ci.yml) | every PR and push to `main`, weekly | static analysis, code scanning, tests, end-to-end; AI explains failures |
 | [`ai.yml`](.github/workflows/ai.yml) | PRs, PR comments, intent file changes | AI PR review + risk gate, ChatOps `/deploy`, AI environment config |
 | [`deploy-vercel.yml`](.github/workflows/deploy-vercel.yml) | after CI passes on `main`, ChatOps, manual | migrate → deploy without moving the domain → probe → AI health gate → promote or block |
-| [`deploy-k8s.yml`](.github/workflows/deploy-k8s.yml) | ChatOps, manual | OIDC login → build and push → `terraform apply` (atomic Helm) → probe → AI health gate → auto-rollback |
+| [`deploy-cloud.yml`](.github/workflows/deploy-cloud.yml) | ChatOps, manual | any cloud, either mode: OIDC login → `terraform apply` → build and push → Helm release (k8s) or `deploy.sh` over SSH (vm) → probe → AI health gate → auto-rollback |
 
 ### Deploy to Vercel (the live target)
 
@@ -134,18 +141,32 @@ Four GitHub Actions workflows:
 3. **Set GitHub secrets:** `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `DATABASE_URL_UNPOOLED`, `PREVIEW_DATABASE_URL_UNPOOLED`, `NVIDIA_API_KEY` (AI features; `ANTHROPIC_API_KEY` works instead). Set the repository variable `PUBLIC_URL`, and create a GitHub environment `production` with required reviewers (the human approval gate).
 4. **Ship.** Merge to `main` (CI runs, then the deploy), or comment `/deploy preview` or `/deploy production` on a PR.
 
-### Deploy to Kubernetes (AWS, GCP or Azure)
+### Deploy to AWS, GCP or Azure: choose a VM or Kubernetes
+
+| | **VM mode** (`vm`) | **Kubernetes mode** (`k8s`) |
+|---|---|---|
+| Runs on | one VM: EC2 · Compute Engine · Azure VM | EKS · GKE Autopilot · AKS |
+| App | `infra/vm/docker-compose.yml`: Postgres + API + web, host nginx with HTTPS (Let's Encrypt) | `infra/helm/sparkboard`: autoscaled pods, ingress, migration job |
+| Database | Postgres container on the VM, nightly backups | managed Postgres (RDS · Cloud SQL · Flexible Server) |
+| Images | GHCR (`ghcr.io/<owner>/sparkboard-*`) | the cloud's registry (ECR · Artifact Registry · ACR) |
+| Deploy and rollback | `infra/vm/deploy.sh` over SSH: pull, migrate, restart, health check, auto-rollback to the previous tag | atomic Helm release, `helm rollback` |
+| Best for | demos, small teams, lowest cost (one small VM) | high availability and autoscaling |
+
+Pick the mode with one variable, `deployment_mode = "vm"` or `"k8s"`, in the cloud's stack, or pick the target when you deploy (`vm-gcp`, `k8s-aws`, …).
 
 1. **Once per cloud:** create a Terraform state bucket and a GitHub OIDC trust for a deploy identity: an IAM role (AWS), Workload Identity Federation (GCP), or a federated app registration (Azure). No long-lived cloud keys are stored.
-2. **Set repository variables:** `TF_BACKEND_CONFIG` (e.g. `bucket=my-tf-state`) plus, per cloud, `AWS_DEPLOY_ROLE_ARN` + `AWS_REGION`, or `GCP_WIF_PROVIDER` + `GCP_DEPLOY_SA` + `GCP_PROJECT_ID` + `GCP_REGION`, or `AZURE_CLIENT_ID` + `AZURE_TENANT_ID` + `AZURE_SUBSCRIPTION_ID`.
-3. **First apply** creates the network, cluster, database and registry:
-   ```bash
-   cd infra/terraform/stacks/gcp                     # or aws / azure
-   cp example.tfvars terraform.tfvars                # region, size, image_tag (+ project_id on GCP)
-   terraform init -backend-config="bucket=my-tf-state"
-   terraform apply -var-file=../../environments/generated/production.tfvars
+2. **Repository variables:** `TF_BACKEND_CONFIG` (e.g. `bucket=my-tf-state`) plus, per cloud, `AWS_DEPLOY_ROLE_ARN` + `AWS_REGION`, or `GCP_WIF_PROVIDER` + `GCP_DEPLOY_SA` + `GCP_PROJECT_ID` + `GCP_REGION`, or `AZURE_CLIENT_ID` + `AZURE_TENANT_ID` + `AZURE_SUBSCRIPTION_ID`.
+   - **k8s mode:** `K8S_API_ALLOWED_CIDRS`, e.g. `["203.0.113.0/24"]`, the CIDRs allowed to reach the Kubernetes API.
+   - **vm mode:** generate a deploy key (`ssh-keygen -t ed25519 -f sparkboard-deploy`), store the private key as the secret `VM_SSH_PRIVATE_KEY` and the public key as the variable `VM_SSH_PUBLIC_KEY`, and set `VM_SSH_ALLOWED_CIDRS`, e.g. `["0.0.0.0/0"]` or your runner's egress CIDRs (SSH is key-only; ports 80/443 are public). Optional: `VM_DOMAIN` (defaults to `<ip>.sslip.io` so HTTPS works without your own DNS) and `CERTBOT_EMAIL`.
+3. **Deploy:** run *Deploy · Cloud* in the Actions tab and pick a target, or comment on a PR:
+   ```text
+   /deploy on gcp vm          → vm-gcp   (Compute Engine + Docker Compose + nginx)
+   /deploy on aws             → k8s-aws  (EKS + Helm)
+   /deploy to azure with docker compose → vm-azure
    ```
-4. **After that, deploy from GitHub:** run *Deploy · Kubernetes* in the Actions tab, or comment `/deploy on gcp` on a PR. The workflow summary prints the public URL.
+   The workflow creates or updates the infrastructure with Terraform, ships the app, probes it, runs the AI health gate and rolls back on failure. The run summary prints the public URL.
+
+Prefer the command line? `cd infra/terraform/stacks/<cloud>`, `cp example.tfvars terraform.tfvars`, set `deployment_mode`, then `terraform init -backend-config="bucket=my-tf-state" && terraform apply -var-file=../../environments/generated/production.tfvars`.
 
 Full setup details: [docs/deployment.md](docs/deployment.md).
 
@@ -209,9 +230,9 @@ The composer's **Sharpen** button uses the same adapter pattern inside the API (
 
 ## Cloud-agnostic approach
 
-The design separates **what** the app needs from **how** each provider sells it, in three layers.
+The design separates **what** the app needs from **how** each provider sells it, and makes the cloud and the deployment mode two independent choices.
 
-**1. A platform contract.** Each `infra/terraform/modules/platform/<cloud>` builds network + managed Kubernetes + managed Postgres + an image registry, and exposes the **same outputs**: `cluster_name`, `kube_host`, `kube_ca_certificate`, `database_url`, `registry_url`, `ingress_class`, `service_account_annotations`.
+**1. Two contracts, one per mode.** For Kubernetes, each `infra/terraform/modules/platform/<cloud>` builds network + managed Kubernetes + managed Postgres + an image registry, and exposes the **same outputs**: `cluster_name`, `kube_host`, `kube_ca_certificate`, `database_url`, `registry_url`, `ingress_class`, `service_account_annotations`.
 
 | | AWS | GCP | Azure |
 |---|---|---|---|
@@ -219,6 +240,9 @@ The design separates **what** the app needs from **how** each provider sells it,
 | Postgres | RDS 17, Multi-AZ when `ha`, logs to CloudWatch | Cloud SQL 17, private IP, TLS required | Flexible Server 17, VNet-injected |
 | Registry | ECR (immutable, scan on push) | Artifact Registry | ACR |
 | Ingress | ALB | GCE | App Routing (managed nginx) |
+| **VM mode** | EC2 + Elastic IP | Compute Engine + static IP (shielded VM) | Linux VM + static public IP |
+
+For VMs, each `infra/terraform/modules/vm/<cloud>` builds a network, firewall (80/443 public, SSH from allowed CIDRs only, key-only auth) and an Ubuntu 24.04 VM, and exposes the same two outputs everywhere: `public_ip` and `ssh_user`. The VM is set up by one cloud-neutral `infra/vm/cloud-init.yaml` and runs the same `docker-compose.yml` on every cloud.
 
 **2. A cloud-neutral app layer.** `modules/app` takes only contract outputs and installs the same Helm chart: a namespace with restricted Pod Security, a Secret kept out of Helm history, and an atomic `helm_release`. It has no provider-specific code.
 
@@ -234,9 +258,9 @@ size       = "small"                 image_tag = "3f2c1ab"
 image_tag  = "3f2c1ab"
 ```
 
-**The pipeline is cloud-agnostic too.** `deploy-k8s.yml` has exactly one per-cloud branch, the OIDC login. Build, apply, probe, health gate and rollback are shared, and Vercel sits behind the same probe → gate → promote/rollback flow.
+**The pipeline is cloud-agnostic too.** `deploy-cloud.yml` has exactly one per-cloud branch, the OIDC login; the deployment mode is a second, independent choice. Build, apply, probe, health gate and rollback are shared, and Vercel sits behind the same probe → gate → promote/rollback flow.
 
-**Adding a fourth cloud** (say DigitalOcean): write `modules/platform/digitalocean` (DOKS + Managed Postgres + DOCR) emitting the same outputs, add a ~70-line `stacks/digitalocean` root and a `values/digitalocean.yaml`, and add one login step to `deploy-k8s.yml`. The app module, chart, images, AI tooling and health gate stay unchanged.
+**Adding a fourth cloud** (say DigitalOcean): write `modules/platform/digitalocean` (DOKS + Managed Postgres + DOCR) and `modules/vm/digitalocean` (a Droplet) emitting the same outputs, add a ~70-line `stacks/digitalocean` root and a `values/digitalocean.yaml`, and add one login step to `deploy-cloud.yml`. The app module, chart, VM files, images, AI tooling and health gate stay unchanged.
 
 ---
 
@@ -261,9 +285,10 @@ app/
 tools/aiops/          AI delivery toolkit: plan · review · envgen · smoke · health · explain
 infra/
   docker/             Dockerfiles + nginx.conf
+  vm/                 VM mode: docker-compose.yml, host nginx, deploy.sh, cloud-init
   helm/sparkboard/    one Kubernetes chart, values/<cloud>.yaml per cloud
-  terraform/          modules/ (sizing · platform/{aws,gcp,azure} · app · vercel) · stacks/<target> · environments/ (one: production)
-.github/workflows/    ci · ai · deploy-vercel · deploy-k8s
+  terraform/          modules/ (sizing · platform/{aws,gcp,azure} · vm/{aws,gcp,azure} · app · vercel) · stacks/<target> · environments/ (one: production)
+.github/workflows/    ci · ai · deploy-vercel · deploy-cloud
 docs/                 detailed documentation
 
 vercel.json           Vercel config: ui + backend services

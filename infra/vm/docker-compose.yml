@@ -1,0 +1,48 @@
+# Sparkboard on a single VM: Postgres + API + web, behind the host's nginx (TLS).
+# Values come from /opt/sparkboard/.env, written by the deploy workflow.
+name: sparkboard
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: sparkboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: sparkboard
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U sparkboard
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    image: ${REGISTRY}/sparkboard-api:${TAG:?set by deploy.sh}
+    environment:
+      DATABASE_URL: postgresql://sparkboard:${POSTGRES_PASSWORD}@db:5432/sparkboard
+      ENVIRONMENT: production
+      RELEASE: ${TAG}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      AI_API_KEY: ${AI_API_KEY:-}
+      CORS_ORIGINS: '["https://${DOMAIN}"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: ${REGISTRY}/sparkboard-web:${TAG}
+    environment:
+      API_UPSTREAM: http://api:8000
+    ports:
+      - "127.0.0.1:8080:8080" # only the host nginx can reach it
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:

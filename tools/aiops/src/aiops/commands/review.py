@@ -9,7 +9,11 @@ from pydantic import BaseModel, Field
 
 from aiops.llm import LLM, LLMUnavailableError
 
-MAX_DIFF_CHARS = 120_000
+MAX_DIFF_CHARS = 40_000
+# Files a reviewer reads past: lockfiles, docs, images, generated configs.
+SKIP_FOR_MODEL = re.compile(
+    r"(\.lock|package-lock\.json|\.md|\.png|\.jpe?g|\.svg|\.webp)$|/generated/"
+)
 
 
 class Risk(IntEnum):
@@ -74,15 +78,43 @@ def risk_floor(files: list[str], diff: str) -> tuple[Risk, list[str]]:
     return floor, reasons
 
 
+def model_diff(diff: str, limit: int = MAX_DIFF_CHARS) -> tuple[str, list[str]]:
+    """The part of the diff worth the model's time: whole files, code first, under a budget.
+
+    Returns the trimmed diff and the files left out (still covered by the risk rules).
+    """
+    chunks = re.split(r"(?=^diff --git )", diff, flags=re.MULTILINE)
+    kept: list[str] = []
+    omitted: list[str] = []
+    size = 0
+    for chunk in chunks:
+        match = re.match(r"diff --git a/(\S+) b/", chunk)
+        if not match:
+            continue
+        path = match.group(1)
+        if SKIP_FOR_MODEL.search(path) or size + len(chunk) > limit:
+            omitted.append(path)
+            continue
+        kept.append(chunk)
+        size += len(chunk)
+    return "".join(kept), omitted
+
+
 def review(diff: str, llm: LLM, ci_summary: str = "") -> ReviewResult:
     files = changed_files(diff)
     floor, reasons = risk_floor(files, diff)
     ai: AIReview | None = None
     risk = floor
+    shown, omitted = model_diff(diff)
+    note = (
+        f"\nNot shown (docs, lockfiles, generated or over budget): {', '.join(omitted)}\n"
+        if omitted
+        else ""
+    )
     try:
         ai = llm.structured(
             SYSTEM,
-            f"CI results:\n{ci_summary or 'n/a'}\n\n<diff>\n{diff[:MAX_DIFF_CHARS]}\n</diff>",
+            f"CI results:\n{ci_summary or 'n/a'}\n{note}\n<diff>\n{shown}\n</diff>",
             AIReview,
             effort="high",
         )

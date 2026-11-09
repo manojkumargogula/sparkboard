@@ -22,7 +22,7 @@ flowchart LR
   B --> ING
 ```
 
-The same API and web code runs on both targets. On Vercel, `api/index.py` wraps the FastAPI app as a serverless function and `vercel.json` routes `/api/*` to it. On Kubernetes, nginx serves the SPA and proxies `/api` to the API pods.
+The same API and web code runs on both targets. On Vercel, `vercel.json` defines two services, `ui` (`app/ui`) and `backend` (`app/backend`), and routes `/api/*` to the backend. On Kubernetes, nginx serves the SPA and proxies `/api` to the API pods.
 
 ## Request path
 

@@ -1,4 +1,4 @@
-# Vercel only needs app/ui (static build), api/index.py + app/backend/src (the function).
+# Vercel builds two services from vercel.json: app/ui (static) and app/backend (FastAPI).
 .env*
 !.env.example
 infra
@@ -7,5 +7,4 @@ tools
 .github
 app/ui/node_modules
 app/backend/.venv
-app/backend/tests
 **/__pycache__

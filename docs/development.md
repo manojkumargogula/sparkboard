@@ -37,7 +37,6 @@ make dev        # Postgres in Docker, API on :8000 with --reload, Vite on :5173 
 | `make test-db` then `make test` | unit + integration tests (API tests use Postgres on :5433) |
 | `make e2e` | Playwright against the running stack |
 | `make check` | lint + test |
-| `make requirements` | regenerate the root `requirements.txt` for Vercel. **Run it after changing API dependencies**; CI fails if it is out of sync |
 | `make tf-validate` | validate every Terraform stack (no cloud credentials) |
 | `make envgen` | regenerate the per-environment Terraform/Helm settings with AI (see [ai-ops.md](ai-ops.md)) |
 

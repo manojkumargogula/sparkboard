@@ -12,8 +12,8 @@ Sparkboard is a community idea board, live at https://ideas.infrenic.com. People
 ```
 Browser (React SPA)
    │
-   ├── Vercel CDN ── static build of app/ui
-   └── /api/* ────── Vercel Python function (api/index.py) ── FastAPI app (app/backend) ── Neon Postgres
+   ├── /*      ──── Vercel service "ui"      (static build of app/ui)
+   └── /api/*  ──── Vercel service "backend" (FastAPI in app/backend) ── Neon Postgres
 ```
 
 | Path | What lives there |
@@ -25,7 +25,7 @@ Browser (React SPA)
 | `infra/docker/` | Dockerfiles + nginx config (local stack and Kubernetes) |
 | `infra/helm/sparkboard/` | Kubernetes chart, per-cloud overlays in `values/` |
 | `infra/terraform/` | `modules/`, `stacks/<target>`, `environments/` |
-| `api/index.py`, `vercel.json`, `requirements.txt` | Vercel entry point and config. Vercel needs them at the repo root; don't move them |
+| `vercel.json` | Vercel config: two services (`ui` → `app/ui`, `backend` → `app/backend`) and the public routes |
 | `docs/` | all documentation |
 
 Rules that keep the architecture intact:
@@ -53,7 +53,7 @@ Rules:
 
 - **Ship by merging to `main`.** Don't deploy from a laptop except to fix a broken pipeline, and then only with `npx vercel deploy --prod` from the repo root after `make check`.
 - **Migrations must be backward compatible** (expand → deploy → contract). They run before the new code takes traffic, so the old code must keep working on the new schema. Never drop or rename a column in the same release that stops using it.
-- **After changing API dependencies, run `make requirements`.** Vercel installs from the root `requirements.txt`; a missing package takes production down (this happened on 2026-11-07). CI fails if the file is out of sync.
+- **API dependencies:** add them with `uv add` in `app/backend` and commit `uv.lock`; Vercel installs the backend straight from it.
 - **Never commit secrets.** They live in Vercel env vars and GitHub secrets. `.env` files are ignored; only `.env.example` is committed.
 - **Never write to the production database by hand** (no ad-hoc SQL, seeds or test posts). If a smoke test writes to production, delete what it created.
 - **Rollback:** run *Deploy · Vercel* from the Actions tab with `rollback: true`, or `vercel rollback`.

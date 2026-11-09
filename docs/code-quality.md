@@ -61,6 +61,8 @@ Naming: `snake_case` for modules, functions and variables, `PascalCase` for clas
 
 Dependencies: add them with `uv add` and commit `uv.lock`.
 
+Major version upgrades (of any package, image or action) are not proposed by Dependabot. Do them on purpose in their own `deps/` branch, read the changelog, and run the full CI.
+
 ## TypeScript (web)
 
 | Rule | Enforced by |

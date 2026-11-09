@@ -1,30 +1,54 @@
-# Weekly dependency updates. The 7-day cooldown skips brand-new releases, which
-# limits exposure to compromised packages that get yanked within days.
+# Dependency updates: once a month, ONE grouped PR per ecosystem, minor and
+# patch versions only. Major upgrades are done deliberately (see
+# docs/code-quality.md). Security fixes still arrive separately through
+# Dependabot security alerts. The 7-day cooldown skips brand-new releases.
 version: 2
+
 updates:
   - package-ecosystem: npm
     directory: /app/ui
-    schedule: { interval: weekly }
-    cooldown: { default-days: 7 }
-    groups: { web: { patterns: ["*"] } }
-  - package-ecosystem: uv
-    directory: /app/backend
-    schedule: { interval: weekly }
-    cooldown: { default-days: 7 }
-    groups: { api: { patterns: ["*"] } }
-  - package-ecosystem: uv
-    directory: /tools/aiops
-    schedule: { interval: weekly }
-    cooldown: { default-days: 7 }
-  - package-ecosystem: docker
-    directory: /infra/docker
-    schedule: { interval: weekly }
-    cooldown: { default-days: 7 }
-  - package-ecosystem: terraform
-    directory: /infra/terraform/stacks/aws
     schedule: { interval: monthly }
     cooldown: { default-days: 7 }
+    open-pull-requests-limit: 1
+    groups: { ui: { patterns: ["*"], update-types: [minor, patch] } }
+    ignore: [{ dependency-name: "*", update-types: ["version-update:semver-major"] }]
+
+  - package-ecosystem: uv
+    directory: /app/backend
+    schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 1
+    groups: { backend: { patterns: ["*"], update-types: [minor, patch] } }
+    ignore: [{ dependency-name: "*", update-types: ["version-update:semver-major"] }]
+
+  - package-ecosystem: uv
+    directory: /tools/aiops
+    schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 1
+    groups: { aiops: { patterns: ["*"], update-types: [minor, patch] } }
+    ignore: [{ dependency-name: "*", update-types: ["version-update:semver-major"] }]
+
+  - package-ecosystem: docker
+    directory: /infra/docker
+    schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 1
+    groups: { docker: { patterns: ["*"], update-types: [minor, patch] } }
+    ignore: [{ dependency-name: "*", update-types: ["version-update:semver-major"] }]
+
+  - package-ecosystem: terraform
+    directories: [/infra/terraform/stacks/aws, /infra/terraform/stacks/gcp, /infra/terraform/stacks/azure, /infra/terraform/stacks/vercel]
+    schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 1
+    groups: { terraform: { patterns: ["*"], update-types: [minor, patch] } }
+    ignore: [{ dependency-name: "*", update-types: ["version-update:semver-major"] }]
+
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
     cooldown: { default-days: 7 }
+    open-pull-requests-limit: 1
+    groups: { actions: { patterns: ["*"], update-types: [minor, patch] } }
+    ignore: [{ dependency-name: "*", update-types: ["version-update:semver-major"] }]

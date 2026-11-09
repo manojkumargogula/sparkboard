@@ -126,6 +126,28 @@ sequenceDiagram
   end
 ```
 
+## Deploy sequence (Kubernetes, any cloud)
+
+```mermaid
+sequenceDiagram
+  participant GH as GitHub Actions
+  participant C as Cloud (OIDC)
+  participant TF as Terraform
+  participant K as Cluster
+  participant AI as aiops
+
+  GH->>C: federated login (no static keys)
+  GH->>C: docker push registry_url/sparkboard-{api,web}:SHA
+  GH->>TF: apply (image_tag=SHA, generated tfvars)
+  TF->>K: helm_release (atomic): migration Job hook → rolling update
+  Note over K: failed rollout ⇒ Helm rolls back by itself
+  GH->>K: probe ingress + kubectl logs
+  GH->>AI: health gate
+  alt unhealthy
+    GH->>K: helm rollback · incident issue
+  end
+```
+
 ## Security
 
 - **Least privilege at runtime.** Containers run non-root with a read-only root filesystem, drop all capabilities and use the RuntimeDefault seccomp profile. Namespaces enforce the restricted Pod Security standard. A NetworkPolicy lets only the web tier reach the API.

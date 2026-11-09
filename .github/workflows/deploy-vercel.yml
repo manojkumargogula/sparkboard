@@ -20,10 +20,25 @@ on:
         description: Roll production back to the previous release
         type: boolean
         default: false
+  workflow_call: # from ChatOps (ai.yml): /deploy preview, /rollback production, ...
+    inputs:
+      environment: { type: string, required: true }
+      ref: { type: string, required: false, default: "" }
+      rollback: { type: boolean, required: false, default: false }
+      pr: { type: string, required: false, default: "" }
+    secrets:
+      VERCEL_TOKEN: { required: false }
+      VERCEL_ORG_ID: { required: false }
+      VERCEL_PROJECT_ID: { required: false }
+      DATABASE_URL_UNPOOLED: { required: false }
+      PREVIEW_DATABASE_URL_UNPOOLED: { required: false }
+      ANTHROPIC_API_KEY: { required: false }
+      VERCEL_AUTOMATION_BYPASS_SECRET: { required: false }
 
 permissions:
   contents: read
   issues: write
+  pull-requests: write
 
 concurrency:
   group: vercel-${{ inputs.environment || 'production' }}
@@ -31,18 +46,19 @@ concurrency:
 
 jobs:
   deploy:
-    # Only CI runs triggered by a push to main (not the weekly scheduled scan).
+    # Manual and ChatOps runs always; from CI only after a successful push to main
+    # (not the weekly scheduled scan).
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name != 'workflow_run' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment:
-      name: ${{ inputs.environment || 'production' }}
+      name: ${{ (inputs.environment == 'production' || !inputs.environment) && 'production' || 'preview' }}
       url: ${{ steps.result.outputs.url }}
     env:
-      ENVIRONMENT: ${{ inputs.environment || 'production' }}
+      ENVIRONMENT: ${{ inputs.environment == 'production' && 'production' || inputs.environment && 'preview' || 'production' }}
       PUBLIC_URL: ${{ vars.PUBLIC_URL }}
-      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      SHA: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -138,6 +154,16 @@ jobs:
         run: |
           if [ "$ENVIRONMENT" = production ]; then echo "url=$PUBLIC_URL" >> "$GITHUB_OUTPUT";
           else echo "url=$URL" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Report on the PR
+        if: always() && inputs.pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          REPORT: ${{ steps.gate.outputs.report }}
+          URL: ${{ steps.deploy.outputs.url || steps.rollback.outputs.url }}
+        run: |
+          gh pr comment "$PR" --body "$(printf '**%s** deployment: %s\n\n%s' "$ENVIRONMENT" "$URL" "$REPORT")"
 
       - name: Incident issue
         if: steps.gate.outputs.decision == 'rollback'

@@ -1,9 +1,0 @@
-# Say what you need, not how to build it. `aiops envgen` turns this into
-# Terraform tfvars + Helm values and opens a PR for review.
-name: staging
-cloud: gcp
-region: europe-west3
-goal: Cost-sensitive staging for QA and demos. Can be slow to scale; must not cost much.
-availability: best-effort
-budget_usd_month: 300
-expected_rps: 3

@@ -1,6 +1,8 @@
+# The one Sparkboard environment, deployed the same way to AWS, GCP and Azure.
+# Describe the need in plain language; `make envgen` (or ai.yml) turns it into
+# generated/production.tfvars + production.values.yaml, clamped by policy.yaml.
+# Each cloud's region lives in its own stacks/<cloud>/terraform.tfvars.
 name: production
-cloud: aws
-region: eu-central-1
 goal: High-availability production for a public launch. Survive a zone outage, no data loss.
 availability: critical
 budget_usd_month: 2500

@@ -10,7 +10,7 @@ variable "region" {
 
 variable "environment" {
   type        = string
-  description = "Environment label (staging, production, ...)."
+  description = "Environment label used in resource names and tags (production)."
 }
 
 variable "size" {

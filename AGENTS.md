@@ -42,12 +42,14 @@ More: [docs/architecture.md](docs/architecture.md).
 
 ## Deployment
 
-**Vercel is the only live target.** There are two workflows:
+**Vercel is the live target; AWS, GCP and Azure are ready but not applied.** Workflows:
 
 | Workflow | When | Does |
 |---|---|---|
 | `.github/workflows/ci.yml` | every PR and push | static analysis, code scanning, tests (must all pass) |
+| `.github/workflows/ai.yml` | PRs, PR comments, intent changes | AI review + risk label, ChatOps `/deploy`, AI environment config |
 | `.github/workflows/deploy-vercel.yml` | after CI passes on `main` | build → migrate → deploy without moving the domain → probe → health gate → promote, or block and open an incident |
+| `.github/workflows/deploy-k8s.yml` | ChatOps or manual | build → terraform apply → probe → health gate → auto-rollback on EKS/GKE/AKS |
 
 Rules:
 
@@ -58,7 +60,7 @@ Rules:
 - **Never write to the production database by hand** (no ad-hoc SQL, seeds or test posts). If a smoke test writes to production, delete what it created.
 - **Rollback:** run *Deploy · Vercel* from the Actions tab with `rollback: true`, or `vercel rollback`.
 
-The Kubernetes setup (`infra/terraform/stacks/{aws,gcp,azure}` + `infra/helm`) is validated and scanned in CI but **not applied**, and there is no workflow for it. Keep it passing `make tf-validate` and the Helm checks when you touch it. Don't run `terraform apply` without explicit approval; it creates paid cloud resources.
+The Kubernetes setup (`infra/terraform/stacks/{aws,gcp,azure}` + `infra/helm`, deployed by `deploy-k8s.yml`) is validated and scanned in CI but **not applied**. Keep it passing `make tf-validate` and the Helm checks when you touch it. Don't run `terraform apply` without explicit approval; it creates paid cloud resources.
 
 More: [docs/deployment.md](docs/deployment.md).
 

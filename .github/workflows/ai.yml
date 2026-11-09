@@ -77,18 +77,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, pull-requests: read }
     steps:
-      - name: High-risk changes need two approvals
+      # Contributors' high-risk PRs need RISK_HIGH_APPROVALS approvals (default 2).
+      # The repo owner can't approve their own PR, so their high-risk PRs pass with
+      # the risk label and AI review as the visible warning.
+      - name: High-risk changes need approvals
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
+          AUTHOR_ROLE: ${{ github.event.pull_request.author_association }}
+          REQUIRED: ${{ vars.RISK_HIGH_APPROVALS || '2' }}
         run: |
           labels=$(gh pr view "$PR" -R "$REPO" --json labels -q '.labels[].name')
           if ! grep -qx 'risk:high' <<<"$labels"; then echo "Not high risk."; exit 0; fi
+          if [ "$AUTHOR_ROLE" = "OWNER" ]; then
+            echo "::warning::risk:high PR by the repository owner: review the AI risk comment before merging."
+            exit 0
+          fi
           approvals=$(gh api "repos/$REPO/pulls/$PR/reviews" \
             -q '[group_by(.user.login)[] | last | select(.state=="APPROVED")] | length')
-          echo "High-risk PR with $approvals approval(s)."
-          [ "$approvals" -ge 2 ] || { echo "::error::risk:high requires 2 approvals"; exit 1; }
+          echo "High-risk PR with $approvals of $REQUIRED required approval(s)."
+          [ "$approvals" -ge "$REQUIRED" ] || { echo "::error::risk:high requires $REQUIRED approvals"; exit 1; }
 
   # ------------------------------------------------------------ ChatOps
 

@@ -158,6 +158,8 @@ Full setup details: [docs/deployment.md](docs/deployment.md).
 
 All of it lives in [`tools/aiops`](tools/aiops): one small, typed package (mypy strict, 96 % test coverage) with a single LLM adapter, shared by every workflow.
 
+> **Running without a model.** The AI calls need an `ANTHROPIC_API_KEY` repository secret. This repository currently has none, so every feature runs on its deterministic fallback (path-based risk rules, keyword ChatOps planning, rule-based sizing, SLO-only health gate). Adding the secret switches them to Claude with no code change.
+
 ### 1. ChatOps deploy planner (AI-assisted command generation)
 
 A PR comment such as `/deploy on gcp`, `/deploy preview` or `/rollback production` becomes a typed `DeployPlan`: an environment, a target and an ordered list of **allow-listed actions** (`build, test, migrate, deploy, smoke, health_gate, promote, rollback`). The model never writes shell. Policy code then:

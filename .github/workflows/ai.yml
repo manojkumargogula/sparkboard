@@ -5,7 +5,7 @@ name: AI assist
 #   review      every PR: Claude reviews the diff and sets a risk:* label.
 #               Path rules (migrations, Terraform, workflows) set a floor the
 #               model cannot lower. risk:high needs two approvals.
-#   chatops     PR comment `/deploy preview`, `/deploy on gcp`,
+#   chatops     PR comment `/deploy preview`, `/deploy on gcp`, `/deploy on aws vm`,
 #               `/rollback production` or `/plan <plain English>`: Claude turns
 #               it into a typed plan of allow-listed steps, policy corrects it,
 #               then the matching deploy workflow runs it.
@@ -171,18 +171,20 @@ jobs:
       NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
-  deploy-kubernetes:
+  deploy-cloud:
     needs: plan
-    if: needs.plan.outputs.execute == 'true' && startsWith(needs.plan.outputs.target, 'k8s-')
-    permissions: { contents: read, id-token: write, issues: write }
-    uses: ./.github/workflows/deploy-k8s.yml
+    if: needs.plan.outputs.execute == 'true' && needs.plan.outputs.target != 'vercel'
+    permissions: { contents: read, id-token: write, packages: write, issues: write }
+    uses: ./.github/workflows/deploy-cloud.yml
     with:
-      cloud: ${{ needs.plan.outputs.target }}
+      target: ${{ needs.plan.outputs.target }}
       ref: ${{ needs.plan.outputs.ref }}
       rollback: ${{ contains(needs.plan.outputs.actions, 'rollback') }}
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      VM_SSH_PRIVATE_KEY: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
 
   # ------------------------------------------------------------ env config
 

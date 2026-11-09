@@ -1,0 +1,34 @@
+#cloud-config
+# First boot of a Sparkboard VM, identical on AWS, GCP and Azure (Ubuntu 24.04).
+# Installs the host only: Docker + Compose, nginx, certbot, fail2ban, automatic
+# security updates. It holds no secrets and no app version, so it never needs to
+# change; deploy-cloud.yml ships the app files and runs infra/vm/deploy.sh over SSH.
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+  - fail2ban
+  - unattended-upgrades
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-sparkboard.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+  - path: /etc/docker/daemon.json
+    content: |
+      { "log-driver": "local", "log-opts": { "max-size": "20m", "max-file": "5" } }
+
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable --now docker
+  - mkdir -p /opt/sparkboard /var/backups/sparkboard
+  - rm -f /etc/nginx/sites-enabled/default
+  - systemctl enable --now nginx fail2ban unattended-upgrades
+  - systemctl reload ssh || systemctl reload sshd || true

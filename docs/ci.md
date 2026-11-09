@@ -9,7 +9,7 @@ Summary:
 | `.github/workflows/ci.yml` | every PR, every push to `main`, weekly | static analysis, code scanning and tests. All jobs must pass before a merge |
 | `.github/workflows/ai.yml` | PRs, PR comments, intent file changes | AI PR review + risk gate, ChatOps `/deploy`, AI environment config |
 | `.github/workflows/deploy-vercel.yml` | after CI passes on `main`, ChatOps, or by hand | deploys to Vercel |
-| `.github/workflows/deploy-k8s.yml` | ChatOps or by hand | deploys to EKS, GKE or AKS |
+| `.github/workflows/deploy-cloud.yml` | ChatOps or by hand | deploys to AWS, GCP or Azure as a VM (Docker Compose + nginx) or on Kubernetes (Helm) |
 
 ## Code scanning
 
@@ -29,7 +29,7 @@ Semgrep and Trivy results are uploaded as SARIF, so they also appear in the repo
 | `api` | `ruff` lint + format, `mypy --strict`, `bandit` (security lint), `pip-audit`, `pytest` against real Postgres (≥ 85 % coverage) |
 | `web` | `eslint` (typescript-eslint strict type-checked + `jsx-a11y` + React hooks), `prettier`, `tsc`, `npm audit`, `vitest` with coverage thresholds, production build, bundle budget (230 kB gzipped) |
 | `aiops` | `ruff`, `mypy --strict`, `pytest` (≥ 85 % coverage) |
-| `infra` | `hadolint` (Dockerfiles), `actionlint` + shellcheck (workflows), `terraform fmt` + `validate` (every stack), `tflint`, `helm lint` + `kubeconform` (every cloud) |
+| `infra` | `hadolint` (Dockerfiles), `actionlint` + shellcheck (workflows), `terraform fmt` + `validate` (every stack), `terraform test` (every cloud in both `vm` and `k8s` mode, mocked providers), `tflint`, `helm lint` + `kubeconform` (every cloud) |
 | `e2e` | Playwright on desktop and mobile against `docker compose up` |
 
 Run the same lint, type and test steps locally with `make check`.

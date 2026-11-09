@@ -3,7 +3,7 @@
 | Target | Status |
 |---|---|
 | **Vercel + Neon** | Live at https://ideas.infrenic.com, deployed by `deploy-vercel.yml` |
-| Kubernetes on AWS / GCP / Azure | Terraform, Helm chart and `deploy-k8s.yml` written, validated and scanned in CI; not applied yet |
+| AWS / GCP / Azure, as a **VM** (Docker Compose + nginx) or on **Kubernetes** (Helm) | Terraform, VM files, Helm chart and `deploy-cloud.yml` written, tested in both modes and scanned in CI; not applied yet |
 
 ## Vercel (the live target)
 
@@ -38,22 +38,62 @@
 
 `vercel.json` defines two services in one project: `ui` (root `app/ui`, Vite) and `backend` (root `app/backend`, FastAPI, installed from `uv.lock`). They build and deploy together, so the UI and API can never be out of sync.
 
-## Kubernetes on AWS / GCP / Azure (not applied yet)
+## AWS / GCP / Azure: VM or Kubernetes (not applied yet)
 
-1. **Once per cloud:** create a Terraform state bucket and a GitHub OIDC trust for a deploy identity (IAM role on AWS, Workload Identity Federation on GCP, federated app registration on Azure).
+Every cloud stack takes `deployment_mode`:
+
+| | `vm` | `k8s` |
+|---|---|---|
+| Compute | one Ubuntu 24.04 VM (EC2 · Compute Engine · Azure VM), static IP | EKS · GKE Autopilot · AKS |
+| App | `infra/vm/docker-compose.yml`: Postgres + API + web | `infra/helm/sparkboard` |
+| Entry point | host nginx, HTTPS via Let's Encrypt (certbot) | cloud ingress (ALB · GCE · App Routing) |
+| Database | Postgres container, data on the VM disk, nightly `pg_dump` (7 days) | managed Postgres (RDS · Cloud SQL · Flexible Server) |
+| Images | GHCR | cloud registry (ECR · Artifact Registry · ACR) |
+| Deploy | `deploy.sh <sha>` over SSH: pull, migrate, restart, health check | atomic Helm release via `terraform apply` |
+| Rollback | `deploy.sh` rolls back by itself on a failed health check; `deploy.sh --rollback` on demand | Helm rolls back a failed rollout; `helm rollback` on demand |
+| Size presets | `small` / `medium` / `ha` pick the VM type (one VM, not HA) | node pools, DB tier, Multi-AZ for `ha` |
+
+### One-time setup
+
+1. **Per cloud:** a Terraform state bucket and a GitHub OIDC trust for the deploy identity (IAM role on AWS, Workload Identity Federation on GCP, federated app registration on Azure).
 2. **Repository variables:** `TF_BACKEND_CONFIG` plus `AWS_DEPLOY_ROLE_ARN` + `AWS_REGION`, or `GCP_WIF_PROVIDER` + `GCP_DEPLOY_SA` + `GCP_PROJECT_ID` + `GCP_REGION`, or `AZURE_CLIENT_ID` + `AZURE_TENANT_ID` + `AZURE_SUBSCRIPTION_ID`.
-3. **First apply** by hand:
+3. **k8s mode:** variable `K8S_API_ALLOWED_CIDRS` (HCL list, e.g. `["203.0.113.0/24"]`).
+4. **vm mode:**
+   - `ssh-keygen -t ed25519 -f sparkboard-deploy`. The private key goes in the secret `VM_SSH_PRIVATE_KEY`, the `.pub` contents in the variable `VM_SSH_PUBLIC_KEY`.
+   - Variable `VM_SSH_ALLOWED_CIDRS` (HCL list). GitHub-hosted runners have changing IPs: use `["0.0.0.0/0"]` (key-only SSH, password login and root login disabled, fail2ban on) or a self-hosted runner's egress CIDR.
+   - Optional: `VM_DOMAIN` (point its DNS A record at the VM IP; without it the site uses `<ip>.sslip.io`), `CERTBOT_EMAIL`, `GOOGLE_CLIENT_ID`, `AUTH_REQUIRED`, and the secret `ADMIN_TOKEN`.
+
+### Deploy
+
+Actions tab → *Deploy · Cloud* → pick a target (`vm-aws`, `vm-gcp`, `vm-azure`, `k8s-aws`, `k8s-gcp`, `k8s-azure`), or comment on a PR: `/deploy on gcp vm`, `/deploy on aws`, `/rollback on azure vm`. The `production` environment approval applies to every target.
+
+What the workflow does:
+
+- **vm:** `terraform apply` (network, firewall, VM; first boot runs `infra/vm/cloud-init.yaml`) → build and push images to GHCR → copy `docker-compose.yml`, `nginx.conf` and `deploy.sh` to `/opt/sparkboard` → write `.env` (the database password is generated on the VM once and kept) → `deploy.sh <sha>` → probe the site → AI health gate → `deploy.sh --rollback` if the gate fails.
+- **k8s:** build and push images to the cloud registry → `terraform apply` (atomic Helm release, migration job first) → probe the ingress → AI health gate → `helm rollback` if the gate fails.
+
+Or from your machine:
 
 ```bash
-cd infra/terraform/stacks/azure                 # or aws / gcp
-cp example.tfvars terraform.tfvars              # region, size, image_tag (+ project_id on GCP)
+cd infra/terraform/stacks/gcp                 # or aws / azure
+cp example.tfvars terraform.tfvars            # region, size, image_tag, deployment_mode (+ project_id on GCP)
 terraform init -backend-config="bucket=my-tf-state"
 terraform apply -var-file=../../environments/generated/production.tfvars
 ```
 
-This creates the network, managed Kubernetes, managed Postgres and an image registry, then installs the Helm chart.
+### Operating a VM
 
-4. **After that, deploy from GitHub:** *Deploy · Kubernetes* in the Actions tab, or a PR comment such as `/deploy on gcp`. The workflow logs in with OIDC, builds and pushes both images, runs `terraform apply` (atomic Helm release), probes the ingress, runs the AI health gate and rolls back with `helm rollback` if it fails. The run summary shows the public URL.
+```bash
+ssh ubuntu@<ip>
+cd /opt/sparkboard
+sudo cat .tag .prev_tag                         # current and previous release
+sudo ./deploy.sh --rollback                     # back to the previous release
+sudo TAG=$(cat .tag) docker compose logs -f api # logs
+ls /var/backups/sparkboard                      # nightly database dumps (7 days)
+gunzip -c /var/backups/sparkboard/<file>.sql.gz | sudo docker exec -i sparkboard-db-1 psql -U sparkboard sparkboard   # restore
+```
+
+The VM is never replaced by Terraform for a new OS image or cloud-init change (`ignore_changes`), because the database lives on its disk. OS security updates install automatically.
 
 ### Layout
 
@@ -64,6 +104,11 @@ infra/
     api.Dockerfile        FastAPI on uvicorn, non-root
     web.Dockerfile        Vite build served by nginx-unprivileged
     nginx.conf            serves the SPA, proxies /api, security headers
+  vm/                     vm mode
+    cloud-init.yaml       first boot on any cloud: Docker, nginx, certbot, fail2ban, auto-updates
+    docker-compose.yml    Postgres + API + web (images from GHCR)
+    nginx.conf            host reverse proxy; certbot adds HTTPS
+    deploy.sh             deploy / auto-rollback / --rollback, nightly backups
   helm/sparkboard/
     values.yaml           cloud-neutral defaults
     values/<cloud>.yaml   small per-cloud overlays (ingress class, annotations)
@@ -71,10 +116,11 @@ infra/
   terraform/
     modules/              reusable code
       sizing/             small | medium | ha → each cloud's machine and database SKUs
-      platform/<cloud>/   network + Kubernetes + Postgres + registry, same outputs on every cloud
+      platform/<cloud>/   k8s mode: network + Kubernetes + Postgres + registry, same outputs on every cloud
+      vm/<cloud>/         vm mode: network + firewall + VM + static IP, same outputs on every cloud
       app/                namespace + secret + Helm release (no cloud-specific code)
       vercel/             Vercel project + env + domain, Neon Postgres
-    stacks/<target>/      what you apply: aws · gcp · azure · vercel
+    stacks/<target>/      what you apply: aws · gcp · azure (deployment_mode = vm | k8s) · vercel; tests/ plans both modes
     environments/         one environment (production), shared by every cloud
       production.intent.yaml   the need in plain language (availability, budget, traffic)
       policy.yaml              limits the AI sizing must stay within

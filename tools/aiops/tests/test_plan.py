@@ -1,3 +1,5 @@
+import pytest
+
 from aiops.commands import plan
 from aiops.commands.plan import Action, Environment, Target
 from tests.conftest import FakeLLM
@@ -66,3 +68,25 @@ def test_kubernetes_targets_always_deploy_production() -> None:
     assert fixed.environment is plan.Environment.PRODUCTION
     assert fixed.requires_approval
     assert any("one environment on k8s" in f for f in fixes)
+
+
+@pytest.mark.parametrize(
+    ("command", "target"),
+    [
+        ("/deploy on gcp", Target.GCP),
+        ("/deploy on aws vm", Target.VM_AWS),
+        ("/deploy to azure with docker compose", Target.VM_AZURE),
+        ("/deploy to google cloud kubernetes", Target.GCP),
+        ("/deploy preview", Target.VERCEL),
+    ],
+)
+def test_cloud_and_mode_come_from_the_words_typed(command: str, target: Target) -> None:
+    assert plan.rules_plan(command).target is target
+
+
+def test_policy_restores_the_typed_mode_and_production() -> None:
+    wrong = plan.rules_plan("/deploy on gcp")  # a model that picked k8s instead of vm
+    fixed, fixes = plan.enforce_policy(wrong, "/deploy on gcp vm")
+    assert fixed.target is Target.VM_GCP
+    assert fixed.environment is Environment.PRODUCTION
+    assert any("vm-gcp" in f for f in fixes)

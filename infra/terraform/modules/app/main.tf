@@ -2,7 +2,7 @@
 # consumes the platform contract and installs the same Helm chart everywhere.
 
 locals {
-  chart_dir = "${path.module}/../../../../deploy/helm/sparkboard"
+  chart_dir = "${path.module}/../../../helm/sparkboard"
 }
 
 resource "random_password" "admin" {

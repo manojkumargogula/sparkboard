@@ -18,11 +18,18 @@ flowchart LR
     JOB[migration Job<br/>Helm pre-upgrade hook] --> PG
   end
 
+  subgraph VM["Target C · one VM on AWS / GCP / Azure"]
+    NGX[host nginx<br/>HTTPS] --> CWEB[web container<br/>nginx + SPA]
+    CWEB -->|/api| CAPI[api container<br/>FastAPI]
+    CAPI --> CPG[(Postgres container<br/>nightly backups)]
+  end
+
   B --> CDN
   B --> ING
+  B --> NGX
 ```
 
-The same API and web code runs on both targets. On Vercel, `vercel.json` defines two services, `ui` (`app/ui`) and `backend` (`app/backend`), and routes `/api/*` to the backend. On Kubernetes, nginx serves the SPA and proxies `/api` to the API pods.
+The same API and web code runs on every target. On Vercel, `vercel.json` defines two services, `ui` (`app/ui`) and `backend` (`app/backend`), and routes `/api/*` to the backend. On Kubernetes, nginx serves the SPA and proxies `/api` to the API pods. On a VM, the same containers run with Docker Compose next to a Postgres container, behind the host's nginx (HTTPS).
 
 ## Request path
 

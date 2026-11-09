@@ -23,6 +23,7 @@ Browser (React SPA)
 | `app/ui/` | React 19 SPA. `src/features/<feature>/` per product area, `src/ui/` shared components, `src/lib/` API client, queries and helpers |
 | `tools/aiops/` | deploy health gate (`smoke`, `health`) and AI environment sizing (`envgen`) |
 | `infra/docker/` | Dockerfiles + nginx config (local stack and Kubernetes) |
+| `infra/vm/` | VM mode: production docker-compose, host nginx, deploy.sh (deploy/rollback), cloud-init |
 | `infra/helm/sparkboard/` | Kubernetes chart, per-cloud overlays in `values/` |
 | `infra/terraform/` | `modules/`, `stacks/<target>`, `environments/` |
 | `vercel.json` | Vercel config: two services (`ui` → `app/ui`, `backend` → `app/backend`) and the public routes |
@@ -49,7 +50,7 @@ More: [docs/architecture.md](docs/architecture.md).
 | `.github/workflows/ci.yml` | every PR and push | static analysis, code scanning, tests (must all pass) |
 | `.github/workflows/ai.yml` | PRs, PR comments, intent changes | AI review + risk label, ChatOps `/deploy`, AI environment config |
 | `.github/workflows/deploy-vercel.yml` | after CI passes on `main` | build → migrate → deploy without moving the domain → probe → health gate → promote, or block and open an incident |
-| `.github/workflows/deploy-k8s.yml` | ChatOps or manual | build → terraform apply → probe → health gate → auto-rollback on EKS/GKE/AKS |
+| `.github/workflows/deploy-cloud.yml` | ChatOps or manual | AWS/GCP/Azure, VM (compose + nginx) or k8s (Helm): terraform apply → ship → probe → health gate → auto-rollback |
 
 Rules:
 
@@ -60,7 +61,7 @@ Rules:
 - **Never write to the production database by hand** (no ad-hoc SQL, seeds or test posts). If a smoke test writes to production, delete what it created.
 - **Rollback:** run *Deploy · Vercel* from the Actions tab with `rollback: true`, or `vercel rollback`.
 
-The Kubernetes setup (`infra/terraform/stacks/{aws,gcp,azure}` + `infra/helm`, deployed by `deploy-k8s.yml`) is validated and scanned in CI but **not applied**. Keep it passing `make tf-validate` and the Helm checks when you touch it. Don't run `terraform apply` without explicit approval; it creates paid cloud resources.
+The cloud setup (`infra/terraform/stacks/{aws,gcp,azure}` with `deployment_mode = vm | k8s`, `infra/vm` for VMs, `infra/helm` for Kubernetes, deployed by `deploy-cloud.yml`) is validated, tested in both modes and scanned in CI but **not applied**. Keep `infra/vm/deploy.sh` idempotent: it must stay safe to re-run, and it rolls back on a failed health check. Keep it passing `make tf-validate` and the Helm checks when you touch it. Don't run `terraform apply` without explicit approval; it creates paid cloud resources.
 
 More: [docs/deployment.md](docs/deployment.md).
 

@@ -7,6 +7,9 @@ module "size" {
 
 locals {
   tags = merge(var.tags, { app = "sparkboard", environment = var.environment, managed-by = "terraform" })
+  # Flexible Server only accepts these storage sizes (MB): round the preset up.
+  pg_storage_sizes = [32768, 65536, 131072, 262144, 524288, 1048576]
+  pg_storage_mb    = [for mb in local.pg_storage_sizes : mb if mb >= module.size.db_storage_gb * 1024][0]
   # ACR names must be globally unique, alphanumeric only.
   acr_name = substr(replace("${var.name}${random_string.suffix.result}", "-", ""), 0, 50)
 }
@@ -121,7 +124,7 @@ resource "azurerm_postgresql_flexible_server" "this" {
   location                      = azurerm_resource_group.this.location
   version                       = "17"
   sku_name                      = module.size.azure.db
-  storage_mb                    = module.size.db_storage_gb * 1024
+  storage_mb                    = local.pg_storage_mb
   backup_retention_days         = module.size.db_backup_days
   delegated_subnet_id           = azurerm_subnet.db.id
   private_dns_zone_id           = azurerm_private_dns_zone.db.id

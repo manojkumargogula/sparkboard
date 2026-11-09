@@ -49,10 +49,11 @@ e2e: ## Playwright against the running stack (`make up` first)
 
 check: lint test ## lint + test
 
-tf-validate: ## Check every Terraform stack (no cloud credentials needed)
+tf-validate: ## Validate + test every Terraform stack in both modes (no cloud credentials needed)
 	for stack in aws gcp azure vercel; do \
 	  terraform -chdir=infra/terraform/stacks/$$stack init -backend=false && \
 	  terraform -chdir=infra/terraform/stacks/$$stack validate || exit 1; \
+	  if [ -d infra/terraform/stacks/$$stack/tests ]; then terraform -chdir=infra/terraform/stacks/$$stack test || exit 1; fi; \
 	done
 
 envgen: ## Regenerate environment configs from infra/terraform/environments/*.intent.yaml

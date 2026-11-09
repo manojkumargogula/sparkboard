@@ -19,6 +19,7 @@ import json
 import os
 import re
 import sys
+import time
 from typing import Literal, TypeVar
 
 import anthropic
@@ -32,9 +33,12 @@ Provider = Literal["anthropic", "nvidia"]
 
 DEFAULT_MODELS: dict[Provider, str] = {
     "anthropic": "claude-opus-5-5",
-    "nvidia": "z-ai/glm-5.3-flash",
+    # Fast and reliable on NVIDIA's API catalog with thinking off (measured 2026-11-09;
+    # z-ai/glm-5.3-flash timed out on every request that day). Override with AIOPS_MODEL.
+    "nvidia": "nvidia/nemotron-3.5-lightning-30b-a3b",
 }
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+DEADLINE_SECONDS = 180
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
@@ -88,7 +92,7 @@ class LLM:
             self._http = http or httpx.Client(
                 base_url=os.environ.get("AIOPS_BASE_URL", NVIDIA_BASE_URL),
                 headers={"Authorization": f"Bearer {key}"},
-                timeout=180,
+                timeout=httpx.Timeout(DEADLINE_SECONDS, read=60),
             )
 
     @property
@@ -137,7 +141,7 @@ class LLM:
             "It must validate against this JSON Schema:\n"
             + json.dumps(schema.model_json_schema(), separators=(",", ":"))
         )
-        body = {
+        body: dict[str, object] = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system + contract},
@@ -145,14 +149,39 @@ class LLM:
             ],
             "temperature": 0.2,
             "max_tokens": 4096,
+            "stream": True,
         }
+        if os.environ.get("AIOPS_THINKING", "off") != "on":
+            # Reasoning models otherwise spend the token budget thinking before answering.
+            body["chat_template_kwargs"] = {"enable_thinking": False}
         try:
-            response = client.post("/chat/completions", json=body)
-            response.raise_for_status()
-            text = response.json()["choices"][0]["message"]["content"] or ""
+            with client.stream("POST", "/chat/completions", json=body) as response:
+                response.raise_for_status()
+                text = _read_reply(response)
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMUnavailableError(f"model call failed: {exc}") from exc
         try:
             return schema.model_validate_json(extract_json(text))
         except ValidationError as exc:
             raise LLMUnavailableError(f"model output did not match the schema: {exc}") from exc
+
+
+def _read_reply(response: httpx.Response) -> str:
+    """Collect the answer from a streamed (SSE) or plain JSON chat completion.
+
+    Streaming keeps a slow-but-working model distinguishable from a dead one, and a
+    hard deadline stops a model that keeps streaming without finishing.
+    """
+    if "text/event-stream" not in response.headers.get("content-type", ""):
+        response.read()
+        return str(response.json()["choices"][0]["message"]["content"] or "")
+    deadline = time.monotonic() + DEADLINE_SECONDS
+    parts: list[str] = []
+    for line in response.iter_lines():
+        if time.monotonic() > deadline:
+            raise LLMUnavailableError(f"model did not finish within {DEADLINE_SECONDS}s")
+        if not line.startswith("data: ") or line == "data: [DONE]":
+            continue
+        for choice in json.loads(line[6:]).get("choices") or []:
+            parts.append(choice.get("delta", {}).get("content") or "")
+    return "".join(parts)

@@ -249,7 +249,7 @@ jobs:
       - uses: terraform-linters/setup-tflint@90f302c255ef959cbfb4bd10581afecdb7ece3e6 # v4
       - name: Terraform lint (tflint)
         run: tflint --init && tflint --recursive --chdir=infra/terraform/modules --minimum-failure-severity=warning
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
       - name: Helm lint + schema check (kubeconform) for every cloud
         run: |
           curl -fsSL --retry 6 --retry-delay 10 --retry-all-errors -o kubeconform.tgz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz

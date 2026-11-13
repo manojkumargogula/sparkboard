@@ -56,7 +56,7 @@ jobs:
         with: { ref: "${{ env.TAG }}" }
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with: { terraform_wrapper: false }
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         if: env.MODE == 'k8s'
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
 

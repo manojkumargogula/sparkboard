@@ -10,7 +10,7 @@ import { useComposer } from "../composer/useComposer";
 import { TicketStack } from "./TicketStack";
 
 const LINES = ["Demo App"];
-veTextCon
+
 export function Hero() {
   const { openComposer } = useComposer();
   const stats = useStats().data;

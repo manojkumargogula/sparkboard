@@ -9,7 +9,7 @@ import { buttonClass } from "@/ui/buttonClass";
 import { useComposer } from "../composer/useComposer";
 import { TicketStack } from "./TicketStack";
 
-const LINES = ["What should", "we build", "next?"];
+const LINES = ["Demo App"];
 
 export function Hero() {
   const { openComposer } = useComposer();
